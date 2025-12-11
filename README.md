@@ -1,4 +1,4 @@
-# 🛡️ Unified Data Loss Prevention (DLP) System
+# 🛡️ SentinelX-Unified-AI-Security-Platform
 
 A comprehensive **enterprise-grade cybersecurity platform** that combines **7 security modules** into a single unified web application — protecting organizations from phishing attacks, network intrusions, data leakage, malware, and unauthorized file access.
 
