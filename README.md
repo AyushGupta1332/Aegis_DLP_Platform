@@ -47,7 +47,7 @@ This project is a **unified Data Loss Prevention (DLP) system** that protects or
 
 Built as a web application with real-time monitoring capabilities, this system provides a **comprehensive security solution** for modern organizations.
 
-**Note** | Only 3 projects are available for now. I am working on integrating the rest of the projects.
+**Note** | **Only 3 projects are available for now. I am working on integrating the rest of the projects.**
 
 ### 1. Download Required Files
 
