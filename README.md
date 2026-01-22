@@ -730,7 +730,6 @@ Directory → Find Files → Extract Text → RoBERTa Classification → Sensiti
 ## 🚀 Future Improvements
 
 - [ ] USB Device Monitoring and Control
-- [ ] VirusTotal API integration for malware analysis
 - [ ] Role-Based Access Control (RBAC)
 - [ ] Email notification system for alerts
 - [ ] Docker containerization
