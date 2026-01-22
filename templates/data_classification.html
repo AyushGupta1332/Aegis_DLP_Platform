@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Classification Scanner - DLP System</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -282,8 +283,21 @@
     </main>
 
     <script>
-        // Socket.IO connection
-        const socket = io('http://localhost:5000');
+        // Socket.IO connection - use same origin (no hardcoded URL)
+        const socket = io();
+
+        // Socket connection debugging
+        socket.on('connect', () => {
+            console.log('[Socket.IO] Connected successfully! Socket ID:', socket.id);
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('[Socket.IO] Connection error:', error);
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('[Socket.IO] Disconnected:', reason);
+        });
 
         let scanningActive = false;
         let results = [];
@@ -315,12 +329,13 @@
             }
 
             try {
-                const response = await fetch('http://localhost:5000/api/classify/start', {
+                const response = await fetch('/api/classify/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ directory: directory })
                 });
                 const data = await response.json();
+                console.log('[Scan] Start response:', data);
 
                 if (data.status === 'started') {
                     scanningActive = true;
@@ -328,6 +343,15 @@
                     stopScanBtn.classList.remove('hidden');
                     progressContainer.classList.remove('hidden');
                     updateStatus('scanning');
+                    // Clear previous results on new scan
+                    results = [];
+                    stats = { total: 0, sensitive: 0, nonSensitive: 0 };
+                    resultsTableBody.innerHTML = '';
+                    updateStats();
+                } else if (data.status === 'error') {
+                    alert('Error: ' + data.message);
+                } else if (data.status === 'already_running') {
+                    alert('A scan is already running. Please wait or stop it first.');
                 }
             } catch (error) {
                 console.error('Error starting scan:', error);
@@ -338,15 +362,17 @@
         // Stop scan
         stopScanBtn.addEventListener('click', async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/classify/stop', {
+                const response = await fetch('/api/classify/stop', {
                     method: 'POST'
                 });
                 const data = await response.json();
+                console.log('[Scan] Stop response:', data);
 
                 if (data.status === 'stopped') {
                     scanningActive = false;
                     stopScanBtn.classList.add('hidden');
                     startScanBtn.classList.remove('hidden');
+                    progressContainer.classList.add('hidden');
                     updateStatus('idle');
                 }
             } catch (error) {
@@ -473,22 +499,72 @@
 
         // Socket.IO event listeners
         socket.on('classification_result', (data) => {
+            console.log('[Socket.IO] Received classification_result:', data);
             addResult(data);
         });
 
         socket.on('scan_progress', (data) => {
+            console.log('[Socket.IO] Received scan_progress:', data);
             updateProgress(data);
+            if (data.message) {
+                progressText.textContent = data.message;
+            }
         });
 
         socket.on('scan_complete', (data) => {
+            console.log('[Socket.IO] Received scan_complete:', data);
             scanningActive = false;
             stopScanBtn.classList.add('hidden');
             startScanBtn.classList.remove('hidden');
             progressContainer.classList.add('hidden');
             updateStatus('idle');
-            alert(`Scan complete! Scanned ${data.total} files.`);
+
+            // Show completion message
+            const message = data.total > 0
+                ? `Scan complete! Scanned ${data.total} files. Found ${data.sensitive} sensitive and ${data.non_sensitive} non-sensitive files.`
+                : 'Scan complete! No supported files found in the directory.';
+            alert(message);
+        });
+
+        socket.on('scan_error', (data) => {
+            console.error('[Socket.IO] Received scan_error:', data);
+            scanningActive = false;
+            stopScanBtn.classList.add('hidden');
+            startScanBtn.classList.remove('hidden');
+            progressContainer.classList.add('hidden');
+            updateStatus('idle');
+            alert('Scan error: ' + (data.error || 'Unknown error'));
         });
     </script>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+
+    <!-- Inject page context for AI chatbot -->
+    <script>
+        window.SENTINELX_PAGE_CONTEXT = {
+            page_type: 'data_classification',
+            feature: 'Data Classification Scanner',
+            model: 'RoBERTa Transformer',
+            stats: {
+                total_files: 0,
+                sensitive_count: 0,
+                non_sensitive_count: 0,
+                scan_active: false
+            }
+        };
+
+        // Update context when classification results come in
+        window.updateClassificationContext = function (stats) {
+            if (window.SENTINELX_PAGE_CONTEXT) {
+                window.SENTINELX_PAGE_CONTEXT.stats = stats;
+            }
+        };
+
+        console.log('Data classification page context loaded');
+    </script>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
 
 </body>
 

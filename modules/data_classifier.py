@@ -366,6 +366,10 @@ def get_classifier():
     """Get or create classifier instance"""
     global classifier
     if classifier is None:
-        model_path = r"D:\VS code\Data Gathering Text CLassification\Models\best_roberta_model_2.2M_1_Epoc.pt"
+        # Use relative path from project root
+        import os
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_path = os.path.join(base_dir, 'models', 'data_classification', 'best_roberta_model_2.2M_1_Epoc.pt')
         classifier = DataClassifier(model_path)
     return classifier
+

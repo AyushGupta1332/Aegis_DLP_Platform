@@ -2,6 +2,7 @@ from scapy.all import sniff, IP, TCP, UDP, ICMP
 import pandas as pd
 from collections import defaultdict
 import time
+import os
 
 class NormalCapture:
     def __init__(self, samples=10000):
@@ -9,7 +10,11 @@ class NormalCapture:
         self.host_history = defaultdict(list)
         self.dataset = []
         self.target = samples
-        self.output = f"normal_windows_{int(time.time())}.csv"
+        # Save to data folder
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_dir = os.path.join(base_dir, 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        self.output = os.path.join(data_dir, f"normal_windows_{int(time.time())}.csv")
 
     def extract_key(self, pkt):
         if IP in pkt:

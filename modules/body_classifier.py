@@ -8,8 +8,9 @@ import torch.nn.functional as F
 # Configuration
 # -------------
 MODEL_NAME = "FacebookAI/roberta-base"
-# Use absolute path based on script location
-SAVED_MODEL_PATH = os.path.join(os.path.dirname(__file__), "roberta_lora_phishing_detector.pt")
+# Use relative path from project root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SAVED_MODEL_PATH = os.path.join(BASE_DIR, "models", "phishing_detection", "roberta_lora_phishing_detector.pt")
 
 # Tokenization / inference params
 MAX_LENGTH = 128

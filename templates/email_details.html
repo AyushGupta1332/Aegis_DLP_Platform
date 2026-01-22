@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Details - DLP Platform</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -564,6 +565,29 @@
             AttachmentScanner.closeModal();
         }
     </script>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Inject email context for AI chatbot -->
+    <script>
+        window.SENTINELX_PAGE_CONTEXT = {
+            page_type: 'email_details',
+            email: {
+                id: {{ email.id }},
+        subject: "{{ email.subject|replace('"', '\\"')|replace('\n', ' ')|replace('\r', '') }}",
+            sender: "{{ email.sender|replace('"', '\\"') }}",
+                category: "{{ email.category }}",
+                    confidence: { { email.confidence_score } },
+        needs_review: { { 'true' if email.needs_review else 'false' } },
+        body_preview: "{{ email.body[:200]|replace('"', '\\"')|replace('\n', ' ')|replace('\r', '')|e if email.body else '' }}"
+            }
+        };
+        console.log('Page context loaded:', window.SENTINELX_PAGE_CONTEXT);
+    </script>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
 
 </body>
 

@@ -1,42 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IDS Real-Time Monitoring Dashboard</title>
-    
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Socket.IO Client -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    
+
     <!-- Chart.js for visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <style>
         .pulse-dot {
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        
+
         @keyframes pulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 opacity: 1;
             }
+
             50% {
                 opacity: .5;
             }
         }
-        
+
         .slide-in {
             animation: slideIn 0.3s ease-out;
         }
-        
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
                 opacity: 0;
             }
+
             to {
                 transform: translateX(0);
                 opacity: 1;
@@ -57,8 +63,9 @@
         }
     </style>
 </head>
+
 <body class="bg-gray-900 text-gray-100">
-    
+
     <!-- Header -->
     <header class="bg-gray-800 shadow-lg border-b border-gray-700">
         <div class="container mx-auto px-6 py-4">
@@ -66,7 +73,9 @@
                 <div class="flex items-center space-x-4">
                     <div class="bg-blue-600 p-3 rounded-lg">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                            </path>
                         </svg>
                     </div>
                     <div>
@@ -74,23 +83,30 @@
                         <p class="text-sm text-gray-400">Real-Time Network Monitoring with MLP AI</p>
                     </div>
                 </div>
-                
+
                 <div class="flex items-center space-x-4">
                     <div id="statusIndicator" class="flex items-center space-x-2">
                         <div class="w-3 h-3 bg-gray-500 rounded-full"></div>
                         <span class="text-sm text-gray-400">Idle</span>
                     </div>
-                    <button id="startBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition duration-200 flex items-center space-x-2">
+                    <button id="startBtn"
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition duration-200 flex items-center space-x-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <span>Start Monitoring</span>
                     </button>
-                    <button id="stopBtn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold transition duration-200 hidden flex items-center space-x-2">
+                    <button id="stopBtn"
+                        class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold transition duration-200 hidden flex items-center space-x-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
                         </svg>
                         <span>Stop Monitoring</span>
                     </button>
@@ -101,10 +117,10 @@
 
     <!-- Main Content -->
     <main class="container mx-auto px-6 py-8">
-        
+
         <!-- Statistics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            
+
             <!-- Total Samples -->
             <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
                 <div class="flex items-center justify-between">
@@ -114,7 +130,9 @@
                     </div>
                     <div class="bg-blue-600 bg-opacity-20 p-3 rounded-lg">
                         <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                            </path>
                         </svg>
                     </div>
                 </div>
@@ -129,7 +147,8 @@
                     </div>
                     <div class="bg-green-600 bg-opacity-20 p-3 rounded-lg">
                         <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
                 </div>
@@ -144,7 +163,9 @@
                     </div>
                     <div class="bg-red-600 bg-opacity-20 p-3 rounded-lg">
                         <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                            </path>
                         </svg>
                     </div>
                 </div>
@@ -159,7 +180,8 @@
                     </div>
                     <div class="bg-purple-600 bg-opacity-20 p-3 rounded-lg">
                         <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                         </svg>
                     </div>
                 </div>
@@ -168,14 +190,16 @@
 
         <!-- Charts Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            
+
             <!-- Doughnut Chart -->
             <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700">
                 <div class="px-6 py-4 border-b border-gray-700">
                     <h2 class="text-xl font-bold text-white flex items-center">
                         <svg class="w-6 h-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
                         </svg>
                         Traffic Distribution
                     </h2>
@@ -192,7 +216,9 @@
                 <div class="px-6 py-4 border-b border-gray-700">
                     <h2 class="text-xl font-bold text-white flex items-center">
                         <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z">
+                            </path>
                         </svg>
                         Real-Time Traffic Flow
                     </h2>
@@ -207,22 +233,27 @@
 
         <!-- Main Grid - Predictions and Bar Chart -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             <!-- Live Predictions Feed -->
             <div class="lg:col-span-2">
                 <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700">
                     <div class="px-6 py-4 border-b border-gray-700">
                         <h2 class="text-xl font-bold text-white flex items-center">
-                            <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                             </svg>
                             Live Predictions
                         </h2>
                     </div>
                     <div id="predictionFeed" class="p-6 space-y-3 max-h-96 overflow-y-auto">
                         <div class="text-center text-gray-500 py-12">
-                            <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                            <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                                </path>
                             </svg>
                             <p class="text-lg">No predictions yet</p>
                             <p class="text-sm mt-2">Start monitoring to see real-time predictions</p>
@@ -236,8 +267,11 @@
                 <div class="bg-gray-800 rounded-xl shadow-lg border border-gray-700">
                     <div class="px-6 py-4 border-b border-gray-700">
                         <h2 class="text-xl font-bold text-white flex items-center">
-                            <svg class="w-6 h-6 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            <svg class="w-6 h-6 mr-2 text-yellow-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                </path>
                             </svg>
                             Detection Stats
                         </h2>
@@ -256,7 +290,7 @@
     <script>
         // Socket.IO connection
         const socket = io('http://localhost:5000');
-        
+
         let monitoringActive = false;
         let predictionCount = 0;
 
@@ -394,7 +428,7 @@
                     method: 'POST'
                 });
                 const data = await response.json();
-                
+
                 if (data.status === 'started' || data.status === 'already_running') {
                     monitoringActive = true;
                     startBtn.classList.add('hidden');
@@ -415,7 +449,7 @@
                     method: 'POST'
                 });
                 const data = await response.json();
-                
+
                 if (data.status === 'stopped') {
                     monitoringActive = false;
                     stopBtn.classList.add('hidden');
@@ -453,14 +487,14 @@
         function addPrediction(data) {
             predictionCount++;
             clearPlaceholder();
-            
+
             const isAnomaly = data.prediction === 'Anomaly';
             const bgColor = isAnomaly ? 'bg-red-900 border-red-700' : 'bg-green-900 border-green-700';
             const textColor = isAnomaly ? 'text-red-400' : 'text-green-400';
-            const icon = isAnomaly ? 
+            const icon = isAnomaly ?
                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>' :
                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
-            
+
             const predictionCard = `
                 <div class="slide-in ${bgColor} border rounded-lg p-4">
                     <div class="flex items-center justify-between">
@@ -480,9 +514,9 @@
                     </div>
                 </div>
             `;
-            
+
             predictionFeed.insertAdjacentHTML('afterbegin', predictionCard);
-            
+
             // Keep only last 20 predictions
             const cards = predictionFeed.children;
             if (cards.length > 20) {
@@ -495,37 +529,55 @@
             totalSamplesEl.textContent = stats.total_samples;
             normalCountEl.textContent = stats.normal_count;
             anomalyCountEl.textContent = stats.anomaly_count;
-            
-            const normalRate = stats.total_samples > 0 
+
+            const normalRate = stats.total_samples > 0
                 ? ((stats.normal_count / stats.total_samples) * 100).toFixed(1)
                 : 0;
             normalRateEl.textContent = normalRate + '%';
-            
+
             // Update doughnut chart
             trafficChart.data.datasets[0].data = [stats.normal_count, stats.anomaly_count];
             trafficChart.update('none'); // 'none' for performance
-            
+
             // Update bar chart
             barChart.data.datasets[0].data = [stats.normal_count, stats.anomaly_count];
             barChart.update('none');
-            
+
             // Update line chart (time series)
             const currentTime = new Date().toLocaleTimeString();
             timeLabels.push(currentTime);
             normalTimeSeries.push(stats.normal_count);
             anomalyTimeSeries.push(stats.anomaly_count);
-            
+
             // Keep only last maxPoints
             if (timeLabels.length > maxPoints) {
                 timeLabels.shift();
                 normalTimeSeries.shift();
                 anomalyTimeSeries.shift();
             }
-            
+
             lineChart.data.labels = timeLabels;
             lineChart.data.datasets[0].data = normalTimeSeries;
             lineChart.data.datasets[1].data = anomalyTimeSeries;
             lineChart.update('none');
+
+            // Update chatbot context with current stats
+            if (window.updateChatbotContext) {
+                window.updateChatbotContext({
+                    total: stats.total_samples,
+                    normal: stats.normal_count,
+                    anomalies: stats.anomaly_count
+                });
+            }
+
+            // Log activity when we have new samples (log every 100 samples)
+            if (stats.total_samples > 0 && stats.total_samples % 100 === 0 && window.AegisDLPActivity) {
+                window.AegisDLPActivity.logAnomalyScan(
+                    stats.total_samples,
+                    stats.normal_count,
+                    stats.anomaly_count
+                );
+            }
         }
 
         // Socket.IO event listeners
@@ -575,5 +627,42 @@
 
         loadInitialStats();
     </script>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Inject page context for AI chatbot -->
+    <script>
+        // Initial context - will be updated dynamically
+        window.SENTINELX_PAGE_CONTEXT = {
+            page_type: 'anomaly_detection',
+            feature: 'Intrusion Detection System',
+            model: 'MLP Neural Network',
+            stats: {
+                total_samples: 0,
+                normal_count: 0,
+                anomaly_count: 0,
+                monitoring_active: false
+            }
+        };
+
+        // Update context when stats change
+        window.updateChatbotContext = function (statsData) {
+            if (window.SENTINELX_PAGE_CONTEXT) {
+                window.SENTINELX_PAGE_CONTEXT.stats = {
+                    total_samples: statsData.total || 0,
+                    normal_count: statsData.normal || 0,
+                    anomaly_count: statsData.anomalies || 0,
+                    monitoring_active: window.monitoringActive || false
+                };
+            }
+        };
+
+        console.log('Anomaly detection page context loaded');
+    </script>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
 </body>
+
 </html>

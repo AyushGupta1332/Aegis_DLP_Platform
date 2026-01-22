@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Encryption - DLP Platform</title>
+    <meta name="description" content="Military-grade encryption for your sensitive files">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e' },
+                        accent: { 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7' },
+                        surface: { 800: '#1e1b4b', 900: '#0f0a1f' }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        * {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0a1f 0%, #1a1033 50%, #0d1117 100%);
+            min-height: 100vh;
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(14, 165, 233, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Glow effects */
+        .glow-teal {
+            box-shadow: 0 0 60px rgba(20, 184, 166, 0.3);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 40px rgba(20, 184, 166, 0.5);
+        }
+
+        /* Drop zone */
+        .drop-zone {
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.drag-over {
+            background: rgba(20, 184, 166, 0.15) !important;
+            border-color: #14b8a6 !important;
+            transform: scale(1.01);
+        }
+
+        /* Button hover glow */
+        .btn-glow:hover {
+            box-shadow: 0 0 30px rgba(20, 184, 166, 0.5);
+        }
+
+        /* Floating orbs background */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            pointer-events: none;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: #14b8a6;
+            top: -100px;
+            left: -100px;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: #0ea5e9;
+            bottom: -50px;
+            right: -50px;
+            animation-delay: -10s;
+        }
+
+        .orb-3 {
+            width: 200px;
+            height: 200px;
+            background: #6366f1;
+            top: 50%;
+            left: 50%;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            25% {
+                transform: translate(30px, -30px) rotate(5deg);
+            }
+
+            50% {
+                transform: translate(-20px, 20px) rotate(-5deg);
+            }
+
+            75% {
+                transform: translate(20px, 10px) rotate(3deg);
+            }
+        }
+
+        /* Tab indicator */
+        .tab-active {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.3), rgba(14, 165, 233, 0.2));
+            border-bottom: 2px solid #14b8a6;
+        }
+
+        /* File item hover */
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Toast */
+        .toast-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Confetti */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            pointer-events: none;
+            animation: confetti-fall 3s ease-out forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(20, 184, 166, 0.5);
+            border-radius: 3px;
+        }
+
+        /* Toggle switch */
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #14b8a6;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        /* Pulse animation for security badge */
+        .pulse-dot {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body class="text-white overflow-x-hidden">
+    <!-- Background orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <!-- Back Button -->
+    <a href="/"
+        class="fixed top-6 left-6 z-50 p-3 rounded-2xl glass hover:bg-white/10 transition-all flex items-center gap-2">
+        <i class="fas fa-arrow-left text-lg text-teal-300"></i>
+        <span class="text-sm text-gray-300">Back</span>
+    </a>
+
+    <!-- Main Container -->
+    <div class="relative z-10 container mx-auto px-4 py-12 max-w-3xl">
+        <!-- Header -->
+        <header class="text-center mb-16">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl glass-card glow-teal mb-8">
+                <i class="fas fa-vault text-4xl text-teal-400"></i>
+            </div>
+            <h1
+                class="text-5xl font-bold mb-4 glow-text bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                CryptoVault
+            </h1>
+            <p class="text-gray-400 text-lg">Military-grade encryption • View-only mode • Self-destruct</p>
+        </header>
+
+        <!-- Main Card -->
+        <div class="glass-card rounded-3xl overflow-hidden glow-teal">
+            <!-- Tabs -->
+            <div class="flex">
+                <button class="tab-btn flex-1 py-5 text-center font-semibold transition-all tab-active"
+                    data-tab="encrypt">
+                    <i class="fas fa-lock mr-2 text-teal-400"></i>
+                    <span>Encrypt</span>
+                </button>
+                <button
+                    class="tab-btn flex-1 py-5 text-center font-semibold transition-all text-gray-400 hover:text-white hover:bg-white/5"
+                    data-tab="decrypt">
+                    <i class="fas fa-unlock mr-2"></i>
+                    <span>Decrypt</span>
+                </button>
+            </div>
+
+            <div class="p-8">
+                <!-- ENCRYPT TAB -->
+                <div id="encrypt-tab" class="tab-content">
+                    <form id="encryptForm" class="space-y-6">
+                        <!-- Drop Zone -->
+                        <div
+                            class="drop-zone border-2 border-dashed border-white/20 rounded-2xl p-10 text-center cursor-pointer hover:border-teal-500/50 hover:bg-teal-500/5 transition-all">
+                            <div class="upload-area">
+                                <div
+                                    class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 flex items-center justify-center">
+                                    <i class="fas fa-cloud-arrow-up text-3xl text-teal-400"></i>
+                                </div>
+                                <p class="text-white text-lg font-medium mb-1">Drop files here</p>
+                                <p class="text-gray-500 text-sm">or click to browse</p>
+                                <input type="file" id="encryptFiles" name="files" multiple hidden>
+                            </div>
+                            <div class="selected-files mt-6 space-y-2"></div>
+                        </div>
+
+                        <!-- Options Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Password Option -->
+                            <div class="glass rounded-2xl p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
+                                            <i class="fas fa-key text-teal-400"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-sm">Password</p>
+                                            <p class="text-gray-500 text-xs">Custom key</p>
+                                        </div>
+                                    </div>
+                                    <div id="passwordToggle" class="toggle-switch"></div>
+                                </div>
+                                <input type="password" id="encryptPassword" placeholder="Enter password"
+                                    class="hidden mt-4 w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 transition-all">
+                            </div>
+
+                            <!-- Self Destruct (View Link) -->
+                            <div class="glass rounded-2xl p-4">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                                        <i class="fas fa-bomb text-red-400"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-sm">View Link Timer</p>
+                                        <p class="text-gray-500 text-xs">Auto-expire after first view</p>
+                                    </div>
+                                </div>
+                                <select id="selfDestructTimer" name="self_destruct"
+                                    class="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-teal-500 cursor-pointer">
+                                    <option value="none" class="bg-gray-900">No limit</option>
+                                    <option value="30s" class="bg-gray-900">30 seconds after view</option>
+                                    <option value="1m" class="bg-gray-900">1 minute after view</option>
+                                    <option value="5m" class="bg-gray-900">5 minutes after view</option>
+                                    <option value="10m" class="bg-gray-900">10 minutes after view</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- View Only Info -->
+                        <div
+                            class="glass rounded-2xl p-4 border border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-teal-500/5">
+                            <div class="flex items-start gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-eye text-cyan-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-sm text-cyan-400">View-Only Mode Enabled</p>
+                                    <p class="text-gray-400 text-xs mt-1">Files will open in secure viewer with
+                                        watermark. No download available for recipients.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Encrypt Button -->
+                        <button type="submit"
+                            class="btn-glow w-full py-4 rounded-2xl bg-gradient-to-r from-teal-600 to-teal-700 text-white font-semibold text-lg flex items-center justify-center gap-3 hover:from-teal-500 hover:to-teal-600 transition-all">
+                            <i class="fas fa-lock"></i>
+                            <span>Encrypt Files</span>
+                        </button>
+                    </form>
+
+                    <!-- Encrypt Results -->
+                    <div id="encryptResults" class="hidden mt-8 space-y-6">
+                        <div class="flex items-center gap-3 text-emerald-400">
+                            <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                <i class="fas fa-check text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold">Encryption Complete</h3>
+                                <p class="text-gray-400 text-sm">Save the key below to share with recipient</p>
+                            </div>
+                        </div>
+
+                        <!-- Key Display -->
+                        <div class="glass rounded-2xl p-5">
+                            <p class="text-gray-400 text-xs font-medium mb-3 uppercase tracking-wide">Encryption Key</p>
+                            <div class="flex gap-2">
+                                <input type="text" id="encryptionKey" readonly
+                                    class="flex-1 px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-teal-300 font-mono text-sm">
+                                <button id="copyKeyBtn"
+                                    class="px-4 rounded-xl bg-teal-600 hover:bg-teal-500 transition-colors"
+                                    title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button id="showQRBtn"
+                                    class="px-4 rounded-xl bg-teal-600 hover:bg-teal-500 transition-colors"
+                                    title="QR Code">
+                                    <i class="fas fa-qrcode"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Files List -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-gray-400 text-sm font-medium">Encrypted Files</p>
+                                <button id="downloadAllEncrypted"
+                                    class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm transition-colors flex items-center gap-2">
+                                    <i class="fas fa-download"></i>
+                                    <span>Download All</span>
+                                </button>
+                            </div>
+                            <div id="encryptedFileList" class="space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DECRYPT TAB -->
+                <div id="decrypt-tab" class="tab-content hidden">
+                    <form id="decryptForm" class="space-y-6">
+                        <!-- Drop Zone -->
+                        <div
+                            class="drop-zone border-2 border-dashed border-white/20 rounded-2xl p-10 text-center cursor-pointer hover:border-teal-500/50 hover:bg-teal-500/5 transition-all">
+                            <div class="upload-area">
+                                <div
+                                    class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 flex items-center justify-center">
+                                    <i class="fas fa-file-import text-3xl text-teal-400"></i>
+                                </div>
+                                <p class="text-white text-lg font-medium mb-1">Upload encrypted file</p>
+                                <p class="text-gray-500 text-sm">Drop here or click to browse</p>
+                                <input type="file" id="decryptFiles" name="file" multiple hidden>
+                            </div>
+                            <div class="selected-files mt-6 space-y-2"></div>
+                        </div>
+
+                        <!-- Key Input -->
+                        <div class="glass rounded-2xl p-4">
+                            <label class="text-gray-400 text-xs font-medium uppercase tracking-wide">Decryption
+                                Key</label>
+                            <input type="text" id="decryptionKey" name="key" placeholder="Paste the encryption key"
+                                required
+                                class="mt-2 w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-mono placeholder-gray-600 focus:outline-none focus:border-teal-500 transition-all">
+                        </div>
+
+                        <!-- Password Input (hidden by default) -->
+                        <div id="decryptPasswordSection" class="hidden glass rounded-2xl p-4">
+                            <label class="text-gray-400 text-xs font-medium uppercase tracking-wide">Password</label>
+                            <input type="password" id="decryptPassword" placeholder="Enter the password"
+                                class="mt-2 w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:outline-none focus:border-teal-500 transition-all">
+                        </div>
+
+                        <!-- Decrypt Button -->
+                        <button type="submit"
+                            class="btn-glow w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold text-lg flex items-center justify-center gap-3 hover:from-emerald-500 hover:to-teal-500 transition-all">
+                            <i class="fas fa-unlock"></i>
+                            <span>Decrypt & View</span>
+                        </button>
+                    </form>
+
+                    <!-- Decrypt Results -->
+                    <div id="decryptResults" class="hidden mt-8 space-y-6">
+                        <div class="flex items-center gap-3 text-emerald-400">
+                            <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                <i class="fas fa-check text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-semibold">Decryption Complete</h3>
+                                <p class="text-gray-400 text-sm">Click View to open file in secure viewer</p>
+                            </div>
+                        </div>
+
+                        <!-- Expiry Info for Decrypted Files -->
+                        <div id="decryptExpiryInfo"
+                            class="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
+                            <i class="fas fa-clock pulse-dot"></i>
+                            <span>View link expires in <strong id="decryptExpiryTime">5</strong> minutes</span>
+                        </div>
+
+                        <!-- Files List -->
+                        <div id="decryptedFileList" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <div class="flex items-center justify-center gap-2 mb-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></div>
+                <span>End-to-end encrypted • Files never stored on server</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- QR Modal -->
+    <div id="qrModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="glass-card rounded-3xl p-8 max-w-sm mx-4 text-center">
+            <h3 class="text-xl font-semibold mb-6">Scan to Copy Key</h3>
+            <div id="qrCodeContainer" class="bg-white p-4 rounded-2xl inline-block mb-6">
+                <img id="qrCodeImage" src="" alt="QR Code" class="w-48 h-48">
+            </div>
+            <button id="closeQRModal" class="w-full py-3 rounded-xl bg-teal-600 hover:bg-teal-500 transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div id="progressModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="glass-card rounded-3xl p-10 max-w-sm mx-4 text-center">
+            <div class="w-16 h-16 mx-auto mb-6 rounded-full bg-teal-500/20 flex items-center justify-center">
+                <i class="fas fa-circle-notch fa-spin text-3xl text-teal-400"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Processing...</h3>
+            <p id="progressText" class="text-gray-400 mb-6">Encrypting your files</p>
+            <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                <div id="progressBar"
+                    class="h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full transition-all duration-300"
+                    style="width: 0%"></div>
+            </div>
+            <p id="progressPercent" class="text-gray-400 text-sm mt-3">0%</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-3"></div>
+
+    <!-- Clipboard.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js"></script>
+
+    <script>
+        // ==================== Tab Switching ====================
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+
+                tabBtns.forEach(b => {
+                    b.classList.remove('tab-active');
+                    b.classList.add('text-gray-400');
+                });
+                btn.classList.add('tab-active');
+                btn.classList.remove('text-gray-400');
+
+                tabContents.forEach(c => c.classList.add('hidden'));
+                document.getElementById(`${tab}-tab`).classList.remove('hidden');
+            });
+        });
+
+        // ==================== Password Toggle ====================
+        const passwordToggle = document.getElementById('passwordToggle');
+        const encryptPassword = document.getElementById('encryptPassword');
+        let usePassword = false;
+
+        passwordToggle.addEventListener('click', () => {
+            usePassword = !usePassword;
+            passwordToggle.classList.toggle('active', usePassword);
+            encryptPassword.classList.toggle('hidden', !usePassword);
+        });
+
+        // ==================== Decrypt Password Detection ====================
+        const decryptionKeyInput = document.getElementById('decryptionKey');
+        const decryptPasswordSection = document.getElementById('decryptPasswordSection');
+
+        decryptionKeyInput.addEventListener('input', () => {
+            const isPasswordKey = decryptionKeyInput.value.startsWith('PASSWORD:');
+            decryptPasswordSection.classList.toggle('hidden', !isPasswordKey);
+        });
+
+        // ==================== File Upload ====================
+        const dropZones = document.querySelectorAll('.drop-zone');
+
+        dropZones.forEach(dropZone => {
+            const fileInput = dropZone.querySelector('input[type="file"]');
+            const uploadArea = dropZone.querySelector('.upload-area');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+                dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); });
+            });
+
+            ['dragenter', 'dragover'].forEach(e => {
+                dropZone.addEventListener(e, () => dropZone.classList.add('drag-over'));
+            });
+
+            ['dragleave', 'drop'].forEach(e => {
+                dropZone.addEventListener(e, () => dropZone.classList.remove('drag-over'));
+            });
+
+            dropZone.addEventListener('drop', e => {
+                fileInput.files = e.dataTransfer.files;
+                updateFileList(dropZone);
+            });
+
+            fileInput.addEventListener('change', () => updateFileList(dropZone));
+        });
+
+        function getFileIconClass(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            const icons = {
+                'pdf': 'fa-file-pdf text-red-400',
+                'doc': 'fa-file-word text-blue-400', 'docx': 'fa-file-word text-blue-400',
+                'xls': 'fa-file-excel text-green-400', 'xlsx': 'fa-file-excel text-green-400',
+                'jpg': 'fa-file-image text-purple-400', 'jpeg': 'fa-file-image text-purple-400',
+                'png': 'fa-file-image text-purple-400', 'gif': 'fa-file-image text-purple-400',
+                'mp4': 'fa-file-video text-pink-400', 'mp3': 'fa-file-audio text-cyan-400',
+                'zip': 'fa-file-zipper text-amber-400', 'txt': 'fa-file-lines text-gray-400',
+                'py': 'fa-file-code text-yellow-400', 'js': 'fa-file-code text-yellow-400'
+            };
+            return icons[ext] || 'fa-file text-gray-400';
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function updateFileList(dropZone) {
+            const fileInput = dropZone.querySelector('input[type="file"]');
+            const fileList = dropZone.querySelector('.selected-files');
+            const files = Array.from(fileInput.files);
+
+            fileList.innerHTML = '';
+            files.forEach(file => {
+                const icon = getFileIconClass(file.name);
+                const item = document.createElement('div');
+                item.className = 'file-item flex items-center gap-3 p-3 rounded-xl bg-white/5 text-white';
+                item.innerHTML = `
+                    <i class="fas ${icon} text-lg"></i>
+                    <span class="flex-1 truncate text-sm">${file.name}</span>
+                    <span class="text-gray-500 text-xs">${formatSize(file.size)}</span>
+                `;
+                fileList.appendChild(item);
+            });
+        }
+
+        // ==================== Toast ====================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const colors = type === 'success' ? 'bg-emerald-600' : 'bg-red-600';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+
+            toast.className = `toast-enter ${colors} text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3`;
+            toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ==================== Confetti ====================
+        function triggerConfetti() {
+            const colors = ['#14b8a6', '#0ea5e9', '#6366f1', '#22c55e', '#f59e0b'];
+            for (let i = 0; i < 50; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                c.style.animationDelay = Math.random() * 2 + 's';
+                c.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                document.body.appendChild(c);
+                setTimeout(() => c.remove(), 5000);
+            }
+        }
+
+        // ==================== Progress Modal ====================
+        function showProgress(text) {
+            const modal = document.getElementById('progressModal');
+            document.getElementById('progressText').textContent = text;
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressPercent').textContent = '0%';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function updateProgress(p) {
+            document.getElementById('progressBar').style.width = p + '%';
+            document.getElementById('progressPercent').textContent = Math.round(p) + '%';
+        }
+
+        function hideProgress() {
+            const modal = document.getElementById('progressModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // ==================== QR Modal ====================
+        const qrModal = document.getElementById('qrModal');
+        document.getElementById('showQRBtn')?.addEventListener('click', async () => {
+            const key = document.getElementById('encryptionKey').value;
+            try {
+                const res = await fetch('/encryption/generate-qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    document.getElementById('qrCodeImage').src = data.qr_code;
+                    qrModal.classList.remove('hidden');
+                    qrModal.classList.add('flex');
+                }
+            } catch (e) { showToast('Failed to generate QR', 'error'); }
+        });
+
+        document.getElementById('closeQRModal').addEventListener('click', () => {
+            qrModal.classList.add('hidden');
+            qrModal.classList.remove('flex');
+        });
+
+        // ==================== Clipboard ====================
+        new ClipboardJS('#copyKeyBtn', {
+            target: () => document.getElementById('encryptionKey')
+        }).on('success', () => showToast('Key copied!'));
+
+        // ==================== Encrypt Form ====================
+        document.getElementById('encryptForm').addEventListener('submit', async e => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            formData.append('use_password', usePassword);
+            formData.append('view_only', 'true'); // Always view-only
+            if (usePassword) {
+                formData.append('password', encryptPassword.value);
+            }
+
+            showProgress('Encrypting...');
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 90) progress = 90;
+                updateProgress(progress);
+            }, 150);
+
+            try {
+                const res = await fetch('/encryption/encrypt', { method: 'POST', body: formData });
+                clearInterval(interval);
+                updateProgress(100);
+                const result = await res.json();
+
+                setTimeout(() => {
+                    hideProgress();
+                    if (result.status === 'success') {
+                        document.getElementById('encryptResults').classList.remove('hidden');
+                        document.getElementById('encryptionKey').value = result.key;
+
+                        const fileList = document.getElementById('encryptedFileList');
+                        fileList.innerHTML = '';
+
+                        result.files.forEach(file => {
+                            const icon = getFileIconClass(file.name);
+                            const item = document.createElement('div');
+                            item.className = 'file-item flex items-center gap-3 p-4 rounded-xl bg-white/5';
+                            item.innerHTML = `
+                                <i class="fas ${icon} text-xl"></i>
+                                <span class="flex-1 truncate">${file.name}</span>
+                                <span class="text-gray-500 text-sm">${file.size}</span>
+                                <a href="/encryption/download/${file.token}" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-sm transition-colors">
+                                    <i class="fas fa-download mr-1"></i>Get
+                                </a>
+                            `;
+                            fileList.appendChild(item);
+                        });
+
+                        triggerConfetti();
+                        showToast('Files encrypted!');
+                    } else {
+                        showToast(result.message || 'Error', 'error');
+                    }
+                }, 400);
+            } catch (e) {
+                clearInterval(interval);
+                hideProgress();
+                showToast('Error', 'error');
+            }
+        });
+
+        // ==================== Decrypt Form ====================
+        document.getElementById('decryptForm').addEventListener('submit', async e => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            if (decryptionKeyInput.value.startsWith('PASSWORD:')) {
+                formData.append('password', document.getElementById('decryptPassword').value);
+            }
+
+            showProgress('Decrypting...');
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress > 90) progress = 90;
+                updateProgress(progress);
+            }, 150);
+
+            try {
+                const res = await fetch('/encryption/decrypt', { method: 'POST', body: formData });
+                clearInterval(interval);
+                updateProgress(100);
+                const result = await res.json();
+
+                setTimeout(() => {
+                    hideProgress();
+                    if (result.status === 'success') {
+                        document.getElementById('decryptResults').classList.remove('hidden');
+                        document.getElementById('decryptExpiryTime').textContent = result.expires_in;
+
+                        const fileList = document.getElementById('decryptedFileList');
+                        fileList.innerHTML = '';
+
+                        result.files.forEach(file => {
+                            const icon = getFileIconClass(file.name);
+                            const item = document.createElement('div');
+                            item.className = 'file-item flex items-center gap-3 p-4 rounded-xl bg-white/5';
+                            item.innerHTML = `
+                                <i class="fas ${icon} text-xl"></i>
+                                <span class="flex-1 truncate">${file.name}</span>
+                                <span class="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-xs">
+                                    <i class="fas fa-shield-halved mr-1"></i>Secure
+                                </span>
+                                <span class="text-gray-500 text-sm">${file.size}</span>
+                                <a href="/encryption/view/${file.token}" target="_blank" 
+                                   class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-sm transition-colors flex items-center gap-2">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            `;
+                            fileList.appendChild(item);
+                        });
+
+                        triggerConfetti();
+                        showToast('Files decrypted!');
+                    } else {
+                        showToast(result.message || 'Error', 'error');
+                    }
+                }, 400);
+            } catch (e) {
+                clearInterval(interval);
+                hideProgress();
+                showToast('Error', 'error');
+            }
+        });
+
+        // ==================== Download All ====================
+        document.getElementById('downloadAllEncrypted')?.addEventListener('click', async () => {
+            const links = document.querySelectorAll('#encryptedFileList a[href^="/encryption/download/"]');
+            links.forEach(link => {
+                const a = document.createElement('a');
+                a.href = link.href;
+                a.click();
+            });
+            showToast('Downloading files...');
+        });
+    </script>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Inject page context for AI chatbot -->
+    <script>
+        window.SENTINELX_PAGE_CONTEXT = {
+            page_type: 'file_encryption',
+            feature: 'File Encryption & Decryption',
+            model: 'AES-256 Fernet Encryption',
+            description: 'Encrypt files with password protection and time-based access. Supports view-only mode for secure sharing.',
+            capabilities: ['Password protection', 'Time-based expiry', 'View-only mode', 'Secure file sharing']
+        };
+        console.log('File encryption page context loaded');
+    </script>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+</body>
+
+</html>

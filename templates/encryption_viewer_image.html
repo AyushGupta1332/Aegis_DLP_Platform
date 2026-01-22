@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{ filename }} - Secure Viewer</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .watermark {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            overflow: hidden;
+        }
+
+        .watermark-text {
+            font-size: 14px;
+            color: rgba(255, 0, 0, 0.15);
+            transform: rotate(-30deg);
+            white-space: nowrap;
+            padding: 50px;
+            font-weight: bold;
+        }
+
+        .secure-badge {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gray-900" oncontextmenu="return false;" ondragstart="return false;">
+    <!-- Watermark Overlay -->
+    <div class="watermark">
+        {% for i in range(100) %}
+        <span class="watermark-text">{{ watermark }}</span>
+        {% endfor %}
+    </div>
+
+    <!-- Secure Badge -->
+    <div class="secure-badge flex items-center gap-2 px-4 py-2 bg-red-600/90 rounded-lg text-white text-sm">
+        <i class="fas fa-shield-halved"></i>
+        <span>View Only - No Download</span>
+    </div>
+
+    <!-- Header -->
+    <div class="bg-gray-800 py-4 px-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="/file-encryption" class="text-gray-400 hover:text-white">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h1 class="text-white font-medium">{{ filename }}</h1>
+        </div>
+    </div>
+
+    <!-- Image Container -->
+    <div class="flex items-center justify-center p-8" style="min-height: calc(100vh - 120px);">
+        <img src="{{ image_data }}" alt="{{ filename }}" class="max-w-full max-h-[80vh] rounded-lg shadow-2xl"
+            oncontextmenu="return false;" ondragstart="return false;">
+    </div>
+
+    <script>
+        // Disable keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P' || e.key === 'c' || e.key === 'C')) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.key === 'PrintScreen') {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Disable print
+        window.addEventListener('beforeprint', function (e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+
+</html>

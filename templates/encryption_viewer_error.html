@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Error - DLP Platform</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
+<body class="min-h-screen bg-gray-900 flex items-center justify-center">
+    <div class="text-center">
+        <i class="fas fa-exclamation-circle text-6xl text-red-500 mb-4"></i>
+        <h1 class="text-2xl font-bold text-white mb-2">Error</h1>
+        <p class="text-gray-400">{{ message }}</p>
+        <a href="/file-encryption"
+            class="mt-4 inline-block px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Go
+            Back</a>
+    </div>
+</body>
+
+</html>

@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phishing Detection Dashboard - DLP</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
@@ -125,13 +127,33 @@
             margin-top: 5px;
         }
 
-        .stat-total .icon { color: #6366f1; }
-        .stat-safe .icon { color: var(--accent-green); }
-        .stat-safe .value { color: var(--accent-green); }
-        .stat-phishing .icon { color: var(--accent-red); }
-        .stat-phishing .value { color: var(--accent-red); }
-        .stat-review .icon { color: var(--accent-yellow); }
-        .stat-review .value { color: var(--accent-yellow); }
+        .stat-total .icon {
+            color: #6366f1;
+        }
+
+        .stat-safe .icon {
+            color: var(--accent-green);
+        }
+
+        .stat-safe .value {
+            color: var(--accent-green);
+        }
+
+        .stat-phishing .icon {
+            color: var(--accent-red);
+        }
+
+        .stat-phishing .value {
+            color: var(--accent-red);
+        }
+
+        .stat-review .icon {
+            color: var(--accent-yellow);
+        }
+
+        .stat-review .value {
+            color: var(--accent-yellow);
+        }
 
         /* Filter Bar */
         .filter-bar {
@@ -300,6 +322,7 @@
                 opacity: 0;
                 transform: translateX(100px);
             }
+
             to {
                 opacity: 1;
                 transform: translateX(0);
@@ -352,18 +375,19 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <!-- Flash Messages -->
         <div class="flash-container">
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="flash-message {{ 'error' if category == 'error' else '' }}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash-message {{ 'error' if category == 'error' else '' }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
             {% endwith %}
         </div>
 
@@ -422,54 +446,54 @@
         <!-- Email Grid -->
         <div class="email-grid" id="email-grid">
             {% if emails %}
-                {% for email in emails %}
-                    <div class="email-card {{ email.category|lower }} {% if email.needs_review == 1 %}needs-review{% endif %}"
-                         data-category="{{ email.category }}"
-                         data-needs-review="{{ email.needs_review }}">
-                        <div class="email-header">
-                            <span class="category-badge {{ 'badge-phishing' if email.category == 'Phishing' else 'badge-safe' }}">
-                                {{ email.category }}
-                            </span>
-                            <span class="confidence">{{ '%.1f' | format(email.confidence_score) }}% confidence</span>
-                        </div>
-                        <div class="email-body">
-                            <h3 class="email-subject">{{ email.subject }}</h3>
-                            <div class="email-from">
-                                <i class="fas fa-user"></i>
-                                {{ email.sender }}
-                            </div>
-                            <p class="email-preview">{{ email.body[:200] }}{% if email.body|length > 200 %}...{% endif %}</p>
-                            <div class="email-actions">
-                                <a href="{{ url_for('phishing_email_details', email_id=email.id) }}" class="btn btn-small">
-                                    <i class="fas fa-eye"></i> View Details
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state" style="grid-column: 1 / -1;">
-                    <i class="fas fa-inbox"></i>
-                    <h3>No emails analyzed yet</h3>
-                    <p>Connect your email account to start scanning for phishing attempts.</p>
-                    <a href="{{ url_for('phishing_detection') }}" class="btn" style="margin-top: 20px;">
-                        <i class="fas fa-envelope"></i> Connect Email
-                    </a>
+            {% for email in emails %}
+            <div class="email-card {{ email.category|lower }} {% if email.needs_review == 1 %}needs-review{% endif %}"
+                data-category="{{ email.category }}" data-needs-review="{{ email.needs_review }}">
+                <div class="email-header">
+                    <span
+                        class="category-badge {{ 'badge-phishing' if email.category == 'Phishing' else 'badge-safe' }}">
+                        {{ email.category }}
+                    </span>
+                    <span class="confidence">{{ '%.1f' | format(email.confidence_score) }}% confidence</span>
                 </div>
+                <div class="email-body">
+                    <h3 class="email-subject">{{ email.subject }}</h3>
+                    <div class="email-from">
+                        <i class="fas fa-user"></i>
+                        {{ email.sender }}
+                    </div>
+                    <p class="email-preview">{{ email.body[:200] }}{% if email.body|length > 200 %}...{% endif %}</p>
+                    <div class="email-actions">
+                        <a href="{{ url_for('phishing_email_details', email_id=email.id) }}" class="btn btn-small">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <i class="fas fa-inbox"></i>
+                <h3>No emails analyzed yet</h3>
+                <p>Connect your email account to start scanning for phishing attempts.</p>
+                <a href="{{ url_for('phishing_detection') }}" class="btn" style="margin-top: 20px;">
+                    <i class="fas fa-envelope"></i> Connect Email
+                </a>
+            </div>
             {% endif %}
         </div>
     </div>
 
     <script>
         // Filter functionality
-        document.getElementById('category-filter').addEventListener('change', function() {
+        document.getElementById('category-filter').addEventListener('change', function () {
             const filter = this.value;
             const cards = document.querySelectorAll('.email-card');
-            
+
             cards.forEach(card => {
                 const category = card.dataset.category;
                 const needsReview = card.dataset.needsReview === '1';
-                
+
                 if (filter === 'all') {
                     card.style.display = 'block';
                 } else if (filter === 'needs-review') {
@@ -488,5 +512,29 @@
             });
         }, 5000);
     </script>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Inject page context for AI chatbot -->
+    <script>
+        window.SENTINELX_PAGE_CONTEXT = {
+            page_type: 'phishing_dashboard',
+            feature: 'Phishing Detection Dashboard',
+            model: 'RoBERTa + YARA Rules',
+            stats: {
+                total_emails: {{ stats.total }},
+        safe_emails: { { stats.safe } },
+        phishing_detected: { { stats.phishing } },
+        needs_review: { { stats.review } }
+            },
+        user_email: "{{ user_email }}"
+        };
+        console.log('Phishing dashboard context loaded:', window.SENTINELX_PAGE_CONTEXT);
+    </script>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
 </body>
+
 </html>

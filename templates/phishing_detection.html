@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phishing Detection - DLP Platform</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -468,6 +469,23 @@
             // Update UI with new email classification
         });
     </script>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Inject page context for AI chatbot -->
+    <script>
+        window.SENTINELX_PAGE_CONTEXT = {
+            page_type: 'phishing_detection',
+            feature: 'Email Phishing Detection',
+            model: 'RoBERTa + YARA Rules',
+            description: 'Connect Gmail or Outlook to scan emails for phishing threats'
+        };
+        console.log('Phishing detection page context loaded');
+    </script>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
 </body>
 
 </html>

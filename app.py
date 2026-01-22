@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, g, send_file
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, g, send_file, Response
 from flask_socketio import SocketIO
 from flask_cors import CORS
 import threading
@@ -17,9 +17,22 @@ import logging
 import sqlite3
 import io
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
+import uuid
+import zipfile
+import mimetypes
+from werkzeug.utils import secure_filename
+
+# File Encryption imports
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+import qrcode
+
 warnings.filterwarnings('ignore')
+
 
 # Phishing Detection imports
 try:
@@ -30,7 +43,7 @@ try:
     from PIL import Image
     import PyPDF2
     from docx import Document
-    from body_classifier import predict_body_label
+    from modules.body_classifier import predict_body_label
     from google_auth_oauthlib.flow import Flow
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
@@ -41,10 +54,11 @@ except ImportError as e:
     print(f"Warning: Some phishing detection dependencies not available: {e}")
     PHISHING_AVAILABLE = False
 
-app = Flask(__name__, template_folder='template', static_folder='static')
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app = Flask(__name__, template_folder='templates', static_folder='static')
+app.config['SECRET_KEY'] = 'No-Secret-For-Now'
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Use threading mode for proper background thread emit support
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -75,14 +89,172 @@ classification_stats = {
     'non_sensitive_count': 0
 }
 
+# ========== FILE ENCRYPTION CONFIGURATION ==========
+# In-memory file storage with expiration
+encryption_file_storage = {}
+ENCRYPTION_STORAGE_EXPIRY_MINUTES = 5
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+
+# Self-destruct timer options (in seconds)
+SELF_DESTRUCT_OPTIONS = {
+    'none': 0,
+    '30s': 30,
+    '1m': 60,
+    '2m': 120,
+    '5m': 300,
+    '10m': 600
+}
+
+# Supported file types for view-only mode
+VIEWABLE_EXTENSIONS = {
+    'images': ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'],
+    'documents': ['pdf'],
+    'text': ['txt', 'md', 'json', 'xml', 'csv', 'log'],
+    'code': ['py', 'js', 'html', 'css', 'java', 'cpp', 'c', 'h', 'php', 'rb', 'go', 'rs', 'ts']
+}
+
+# File type icons mapping
+FILE_ICONS = {
+    'pdf': 'fa-file-pdf',
+    'doc': 'fa-file-word', 'docx': 'fa-file-word',
+    'xls': 'fa-file-excel', 'xlsx': 'fa-file-excel',
+    'ppt': 'fa-file-powerpoint', 'pptx': 'fa-file-powerpoint',
+    'jpg': 'fa-file-image', 'jpeg': 'fa-file-image', 'png': 'fa-file-image', 'gif': 'fa-file-image', 'svg': 'fa-file-image',
+    'mp3': 'fa-file-audio', 'wav': 'fa-file-audio', 'ogg': 'fa-file-audio',
+    'mp4': 'fa-file-video', 'avi': 'fa-file-video', 'mkv': 'fa-file-video',
+    'zip': 'fa-file-archive', 'rar': 'fa-file-archive', '7z': 'fa-file-archive', 'tar': 'fa-file-archive',
+    'py': 'fa-file-code', 'js': 'fa-file-code', 'html': 'fa-file-code', 'css': 'fa-file-code', 'java': 'fa-file-code',
+    'txt': 'fa-file-lines',
+    'csv': 'fa-file-csv',
+}
+
+# File Encryption Helper Functions
+def get_encryption_file_extension(filename):
+    """Get file extension in lowercase"""
+    return filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+
+def get_encryption_file_icon(filename):
+    """Get Font Awesome icon class based on file extension"""
+    ext = get_encryption_file_extension(filename)
+    return FILE_ICONS.get(ext, 'fa-file')
+
+def is_file_viewable(filename):
+    """Check if file can be viewed in browser"""
+    ext = get_encryption_file_extension(filename)
+    for category, extensions in VIEWABLE_EXTENSIONS.items():
+        if ext in extensions:
+            return True, category
+    return False, None
+
+def get_encryption_mime_type(filename):
+    """Get MIME type for file"""
+    mime_type, _ = mimetypes.guess_type(filename)
+    return mime_type or 'application/octet-stream'
+
+def cleanup_encryption_expired_files():
+    """Background thread to cleanup expired files from memory"""
+    while True:
+        time.sleep(5)
+        current_time = datetime.now()
+        expired_tokens = []
+        
+        for token, data in list(encryption_file_storage.items()):
+            if current_time > data['expires']:
+                expired_tokens.append(token)
+                logger.info(f"[SELF-DESTRUCT] File '{data['filename']}' has been destroyed (expired)")
+        
+        for token in expired_tokens:
+            if token in encryption_file_storage:
+                del encryption_file_storage[token]
+
+# Start cleanup thread for file encryption
+encryption_cleanup_thread = threading.Thread(target=cleanup_encryption_expired_files, daemon=True)
+encryption_cleanup_thread.start()
+
+def generate_encryption_key():
+    return Fernet.generate_key()
+
+def derive_key_from_password(password, salt=None):
+    if salt is None:
+        salt = os.urandom(16)
+    
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=480000,
+        backend=default_backend()
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    return key, salt
+
+def encrypt_file_data(data, key):
+    cipher = Fernet(key)
+    return cipher.encrypt(data)
+
+def decrypt_file_data(encrypted_data, key):
+    cipher = Fernet(key)
+    return cipher.decrypt(encrypted_data)
+
+def sanitize_upload_filename(filename):
+    return secure_filename(filename)
+
+def create_encrypted_package(file_data, original_filename, self_destruct_seconds, view_only=False):
+    """Create a package with file data and hidden metadata"""
+    metadata = {
+        'original_filename': original_filename,
+        'self_destruct_seconds': self_destruct_seconds,
+        'view_only': view_only,
+        'created_at': datetime.now().isoformat()
+    }
+    
+    metadata_json = json.dumps(metadata).encode('utf-8')
+    metadata_length = len(metadata_json).to_bytes(4, 'big')
+    
+    return metadata_length + metadata_json + file_data
+
+def extract_encrypted_package(package_data):
+    """Extract file data and hidden metadata from package"""
+    try:
+        metadata_length = int.from_bytes(package_data[:4], 'big')
+        metadata_json = package_data[4:4+metadata_length].decode('utf-8')
+        metadata = json.loads(metadata_json)
+        file_data = package_data[4+metadata_length:]
+        return metadata, file_data
+    except:
+        return {'self_destruct_seconds': 0, 'view_only': False}, package_data
+
+def store_encrypted_file(filename, data, original_name=None, self_destruct_seconds=0, is_decrypted=False, view_only=False):
+    """Store file in memory with UUID token and expiration"""
+    token = str(uuid.uuid4())
+    expiry_time = datetime.now() + timedelta(minutes=ENCRYPTION_STORAGE_EXPIRY_MINUTES)
+    
+    encryption_file_storage[token] = {
+        'filename': filename,
+        'original_name': original_name or filename,
+        'data': data,
+        'size': len(data),
+        'expires': expiry_time,
+        'created': datetime.now(),
+        'self_destruct_seconds': self_destruct_seconds,
+        'is_decrypted': is_decrypted,
+        'view_only': view_only,
+        'download_count': 0,
+        'view_count': 0,
+        'self_destruct_activated': False,
+        'max_downloads': 999
+    }
+    return token
+
 # ========== PHISHING DETECTION CONFIGURATION ==========
+
 # YARA configuration
-app.config['YARA_RULES_DIR'] = os.path.join(os.path.dirname(__file__), 'awesome-yara', 'rules')
+app.config['YARA_RULES_DIR'] = os.path.join(os.path.dirname(__file__), 'data', 'yara_rules', 'rules')
 app.config['TEMP_DIR'] = os.path.join(os.getcwd(), 'temp')
-app.config['PHISHING_DB'] = os.path.join(os.path.dirname(__file__), 'phishing_emails.db')
+app.config['PHISHING_DB'] = os.path.join(os.path.dirname(__file__), 'databases', 'emails.db')
 
 # Load trusted domains
-TRUSTED_CSV_PATH = os.path.join(os.path.dirname(__file__), "top-1m.csv")
+TRUSTED_CSV_PATH = os.path.join(os.path.dirname(__file__), 'data', 'top-1m.csv')
 trusted_set = set()
 
 PUBLIC_EMAIL_PROVIDERS = {
@@ -173,7 +345,7 @@ def init_phishing_db():
     conn.close()
 
 # ========== SINGLE DATABASE FOR ALL USERS ==========
-FEEDBACK_DB_PATH = os.path.join(os.path.dirname(__file__), 'feedback.db')
+FEEDBACK_DB_PATH = os.path.join(os.path.dirname(__file__), 'databases', 'feedback.db')
 
 def get_phishing_db_connection():
     """Get a connection to the main phishing emails database"""
@@ -284,6 +456,90 @@ def classify_text_attachment(text):
         logger.error(f"Error classifying text attachment: {e}")
         return 'non-sensitive'
 
+# Global cache for the image classification model
+_cached_image_model = None
+
+def _load_image_model():
+    """Load and cache the image classification model with Keras 3.x to 2.x conversion."""
+    global _cached_image_model
+    
+    if _cached_image_model is not None:
+        return _cached_image_model
+    
+    image_model_path = os.path.join(os.path.dirname(__file__), 'image_model.h5')
+    if not os.path.exists(image_model_path):
+        return None
+    
+    import tensorflow as tf
+    import h5py
+    import tempfile
+    import shutil
+    
+    def convert_keras3_config_to_keras2(config):
+        """Recursively convert Keras 3.x config format to Keras 2.x format."""
+        if isinstance(config, dict):
+            new_config = {}
+            for key, value in config.items():
+                # Convert DTypePolicy to simple string
+                if key == 'dtype' and isinstance(value, dict) and value.get('class_name') == 'DTypePolicy':
+                    new_config[key] = value.get('config', {}).get('name', 'float32')
+                # Convert batch_shape to batch_input_shape
+                elif key == 'batch_shape':
+                    new_config['batch_input_shape'] = value
+                # Convert nested initializer/regularizer objects to simple format
+                elif key in ['kernel_initializer', 'bias_initializer', 'kernel_regularizer', 
+                             'bias_regularizer', 'activity_regularizer'] and isinstance(value, dict):
+                    if 'class_name' in value:
+                        class_name = value.get('class_name', '')
+                        inner_config = value.get('config', {})
+                        # Simplify to the format Keras 2.x expects
+                        new_config[key] = {'class_name': class_name, 'config': inner_config}
+                    else:
+                        new_config[key] = convert_keras3_config_to_keras2(value)
+                else:
+                    new_config[key] = convert_keras3_config_to_keras2(value)
+            return new_config
+        elif isinstance(config, list):
+            return [convert_keras3_config_to_keras2(item) for item in config]
+        else:
+            return config
+    
+    try:
+        # Create a temporary copy of the model file and modify it
+        with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file:
+            temp_path = tmp_file.name
+        
+        shutil.copy2(image_model_path, temp_path)
+        
+        # Modify the model config in the temp file
+        with h5py.File(temp_path, 'r+') as f:
+            if 'model_config' in f.attrs:
+                model_config_str = f.attrs['model_config']
+                if isinstance(model_config_str, bytes):
+                    model_config_str = model_config_str.decode('utf-8')
+                model_config = json.loads(model_config_str)
+                
+                # Convert the config
+                converted_config = convert_keras3_config_to_keras2(model_config)
+                
+                # Write back
+                f.attrs['model_config'] = json.dumps(converted_config).encode('utf-8')
+        
+        # Load the modified model
+        _cached_image_model = tf.keras.models.load_model(temp_path, compile=False)
+        logger.info("Image classification model loaded and cached successfully")
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        
+        return _cached_image_model
+    except Exception as e:
+        logger.error(f"Error loading image model: {e}")
+        return None
+
 def classify_image_attachment(image_data):
     """Classify image content as sensitive or non-sensitive using CNN."""
     try:
@@ -292,21 +548,21 @@ def classify_image_attachment(image_data):
         image = Image.open(io.BytesIO(image_data))
         if image.mode == 'RGBA':
             image = image.convert('RGB')
-        image = image.resize((148, 148))
+        image = image.resize((150, 150))
         image_array = np.array(image) / 255.0
         image_array = np.expand_dims(image_array, axis=0)
-        # Load image model
-        image_model_path = os.path.join(os.path.dirname(__file__), 'image_model.h5')
-        if os.path.exists(image_model_path):
-            import tensorflow as tf
-            image_model = tf.keras.models.load_model(image_model_path)
-            prediction = image_model.predict(image_array)
+        
+        # Get cached model
+        image_model = _load_image_model()
+        if image_model is not None:
+            prediction = image_model.predict(image_array, verbose=0)
             sensitivity = 'sensitive' if prediction[0] > 0.5 else 'non-sensitive'
             return sensitivity
         return 'non-sensitive'
     except Exception as e:
         logger.error(f"Error classifying image attachment: {e}")
         return 'non-sensitive'
+
 
 def process_gmail_message(service, message_id):
     """Process a Gmail message and extract data for classification."""
@@ -645,11 +901,12 @@ def load_mlp_model():
         
         # Use absolute paths based on script location
         base_dir = os.path.dirname(os.path.abspath(__file__))
+        models_dir = os.path.join(base_dir, 'models', 'anomaly_detection')
         
-        model_path = os.path.join(base_dir, 'mlp_ids_model.pkl')
-        scaler_path = os.path.join(base_dir, 'scaler.pkl')
-        encoders_path = os.path.join(base_dir, 'label_encoders.pkl')
-        features_path = os.path.join(base_dir, 'feature_info.pkl')
+        model_path = os.path.join(models_dir, 'mlp_ids_model.pkl')
+        scaler_path = os.path.join(models_dir, 'scaler.pkl')
+        encoders_path = os.path.join(models_dir, 'label_encoders.pkl')
+        features_path = os.path.join(models_dir, 'feature_info.pkl')
         
         print(f"  Loading model from: {model_path}")
         
@@ -741,14 +998,18 @@ def monitor_and_predict():
     global monitoring_active, prediction_queue, last_processed_rows
     
     csv_files = []
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     
     while monitoring_active:
         try:
-            # Find latest CSV file from monitor
-            csv_files = [f for f in os.listdir('.') if f.startswith('normal_windows_') and f.endswith('.csv')]
+            # Find latest CSV file from monitor in data folder
+            if os.path.exists(data_dir):
+                csv_files = [f for f in os.listdir(data_dir) if f.startswith('normal_windows_') and f.endswith('.csv')]
+            else:
+                csv_files = []
             
             if csv_files:
-                latest_csv = max(csv_files, key=os.path.getctime)
+                latest_csv = max([os.path.join(data_dir, f) for f in csv_files], key=os.path.getctime)
                 
                 # Read the entire CSV
                 df = pd.read_csv(latest_csv)
@@ -819,7 +1080,7 @@ def start_monitoring():
         
         # Start traffic generator
         try:
-            traffic_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'traffic.py')
+            traffic_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modules', 'traffic.py')
             traffic_gen_process = subprocess.Popen(['python', traffic_script], cwd=os.path.dirname(os.path.abspath(__file__)))
             time.sleep(2)  # Give it time to start
             print("[INFO] Traffic generator started")
@@ -956,7 +1217,7 @@ def run_classification_scan(directory):
         
         # Import classifier
         print("[CLASSIFICATION] Importing classifier module...")
-        from data_classifier import get_classifier
+        from modules.data_classifier import get_classifier
         
         # Get classifier instance (this will load the model - takes time!)
         print("[CLASSIFICATION] Initializing classifier (loading RoBERTa model)...")
@@ -1028,6 +1289,8 @@ def run_classification_scan(directory):
                     
                     # Emit result
                     socketio.emit('classification_result', result)
+                    # Small delay to ensure Socket.IO broadcasts the message
+                    time.sleep(0.05)
                     
                     print(f"[CLASSIFICATION] ✓ {file_path.name}: {result['classification']} ({result['confidence']:.1f}%)")
                     
@@ -1048,6 +1311,7 @@ def run_classification_scan(directory):
                     
                     classification_results.append(error_result)
                     socketio.emit('classification_result', error_result)
+                    time.sleep(0.05)
                 
                 # Emit progress regardless of success/failure
                 socketio.emit('scan_progress', {
@@ -1056,6 +1320,7 @@ def run_classification_scan(directory):
                     'percentage': ((idx + 1) / total_files) * 100,
                     'message': f'Processing {idx + 1}/{total_files} files...'
                 })
+                time.sleep(0.02)  # Small delay for progress update
                 
             except Exception as e:
                 print(f"[CLASSIFICATION] Unexpected error on file {file_path}: {e}")
@@ -1858,14 +2123,1090 @@ def get_user_databases():
 
 # Helper function to run monitor
 def run_monitor():
-    from monitor import NormalCapture
+    from modules.monitor import NormalCapture
     try:
         capture = NormalCapture(samples=1000000)
         capture.run()
     except Exception as e:
         print(f"Capture error: {e}")
 
+# ========== FILE ENCRYPTION ROUTES ==========
+@app.route('/file-encryption')
+def file_encryption():
+    """File encryption dashboard"""
+    return render_template('file_encryption.html')
+
+@app.route('/encryption/encrypt', methods=['POST'])
+def encrypt_files():
+    """Encrypt uploaded files and return download tokens"""
+    if 'files' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No files selected'}), 400
+    
+    files = request.files.getlist('files')
+    use_password = request.form.get('use_password', 'false') == 'true'
+    user_password = request.form.get('password', '')
+    self_destruct = request.form.get('self_destruct', 'none')
+    view_only = request.form.get('view_only', 'false') == 'true'
+    
+    self_destruct_seconds = SELF_DESTRUCT_OPTIONS.get(self_destruct, 0)
+    
+    file_details = []
+    
+    if use_password and user_password:
+        key, salt = derive_key_from_password(user_password)
+        key_display = f"PASSWORD:{base64.b64encode(salt).decode()}"
+    else:
+        key = generate_encryption_key()
+        key_display = key.decode()
+    
+    for file in files:
+        if file.filename:
+            sanitized_name = sanitize_upload_filename(file.filename)
+            
+            try:
+                file_data = file.read()
+                original_size = len(file_data)
+                
+                viewable, category = is_file_viewable(sanitized_name)
+                if view_only and not viewable:
+                    return jsonify({
+                        'status': 'error',
+                        'message': f"File '{sanitized_name}' cannot be viewed in browser. Supported: images, PDFs, text files"
+                    }), 400
+                
+                package_data = create_encrypted_package(
+                    file_data, 
+                    sanitized_name, 
+                    self_destruct_seconds,
+                    view_only
+                )
+                
+                encrypted_data = encrypt_file_data(package_data, key)
+                encrypted_filename = f"encrypted_{sanitized_name}"
+                token = store_encrypted_file(encrypted_filename, encrypted_data, sanitized_name)
+                
+                icon = get_encryption_file_icon(sanitized_name)
+                
+                file_details.append({
+                    'name': encrypted_filename,
+                    'original_name': sanitized_name,
+                    'size': f"{len(encrypted_data) / 1024:.1f} KB",
+                    'original_size': f"{original_size / 1024:.1f} KB",
+                    'token': token,
+                    'icon': icon,
+                    'self_destruct': self_destruct if self_destruct != 'none' else None,
+                    'view_only': view_only
+                })
+                
+            except Exception as e:
+                return jsonify({
+                    'status': 'error', 
+                    'message': f"Error processing {sanitized_name}: {str(e)}"
+                }), 500
+    
+    return jsonify({
+        'status': 'success',
+        'key': key_display,
+        'files': file_details,
+        'expires_in': ENCRYPTION_STORAGE_EXPIRY_MINUTES,
+        'self_destruct_enabled': self_destruct_seconds > 0,
+        'view_only': view_only
+    })
+
+@app.route('/encryption/decrypt', methods=['POST'])
+def decrypt_file_request():
+    """Decrypt uploaded files and return view tokens"""
+    if 'file' not in request.files or 'key' not in request.form:
+        return jsonify({'status': 'error', 'message': 'Missing file or key'}), 400
+    
+    encrypted_files = request.files.getlist('file')
+    key_input = request.form['key']
+    
+    file_details = []
+    
+    try:
+        if key_input.startswith('PASSWORD:'):
+            user_password = request.form.get('password', '')
+            if not user_password:
+                return jsonify({
+                    'status': 'error', 
+                    'message': 'Password required for decryption'
+                }), 400
+            
+            salt = base64.b64decode(key_input.replace('PASSWORD:', ''))
+            key, _ = derive_key_from_password(user_password, salt)
+        else:
+            key = key_input.encode()
+        
+        for encrypted_file in encrypted_files:
+            if encrypted_file.filename:
+                sanitized_name = sanitize_upload_filename(encrypted_file.filename)
+                encrypted_data = encrypted_file.read()
+                
+                decrypted_package = decrypt_file_data(encrypted_data, key)
+                metadata, file_data = extract_encrypted_package(decrypted_package)
+                
+                self_destruct_seconds = metadata.get('self_destruct_seconds', 0)
+                view_only = metadata.get('view_only', False)
+                original_filename = metadata.get('original_filename', sanitized_name)
+                
+                if original_filename.startswith('encrypted_'):
+                    output_name = original_filename[10:]
+                else:
+                    output_name = original_filename
+                
+                token = store_encrypted_file(
+                    output_name, 
+                    file_data, 
+                    sanitized_name,
+                    self_destruct_seconds=self_destruct_seconds,
+                    is_decrypted=True,
+                    view_only=view_only
+                )
+                
+                icon = get_encryption_file_icon(output_name)
+                viewable, category = is_file_viewable(output_name)
+                
+                file_details.append({
+                    'name': output_name,
+                    'original_name': sanitized_name,
+                    'size': f"{len(file_data) / 1024:.1f} KB",
+                    'token': token,
+                    'icon': icon,
+                    'view_only': True,
+                    'viewable': viewable,
+                    'file_type': category,
+                    'self_destruct_seconds': self_destruct_seconds
+                })
+        
+        # Calculate display expiry time
+        if file_details and file_details[0].get('self_destruct_seconds', 0) > 0:
+            expiry_seconds = file_details[0]['self_destruct_seconds']
+            if expiry_seconds < 60:
+                expires_display = f"{expiry_seconds} seconds (after first view)"
+            else:
+                expires_display = f"{expiry_seconds // 60} minute(s) (after first view)"
+        else:
+            expires_display = f"{ENCRYPTION_STORAGE_EXPIRY_MINUTES} minutes"
+        
+        return jsonify({
+            'status': 'success',
+            'files': file_details,
+            'expires_in': expires_display
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'message': f"Decryption failed: {str(e)}"
+        }), 500
+
+@app.route('/encryption/view/<token>')
+def view_encrypted_file(token):
+    """View file in browser with watermark (view-only mode)"""
+    if token not in encryption_file_storage:
+        return render_template('encryption_viewer_error.html', message="File not found or has been destroyed")
+    
+    file_data = encryption_file_storage[token]
+    
+    if datetime.now() > file_data['expires']:
+        del encryption_file_storage[token]
+        return render_template('encryption_viewer_error.html', message="File has expired or been destroyed")
+    
+    # Increment view count
+    encryption_file_storage[token]['view_count'] += 1
+    
+    # Activate self-destruct on first view
+    if (file_data.get('is_decrypted') and 
+        file_data.get('self_destruct_seconds', 0) > 0 and
+        not file_data.get('self_destruct_activated', False)):
+        
+        self_destruct_seconds = file_data['self_destruct_seconds']
+        new_expiry = datetime.now() + timedelta(seconds=self_destruct_seconds)
+        encryption_file_storage[token]['expires'] = new_expiry
+        encryption_file_storage[token]['self_destruct_activated'] = True
+        logger.info(f"[SELF-DESTRUCT ACTIVATED] File '{file_data['filename']}' will be destroyed in {self_destruct_seconds} seconds")
+    
+    filename = file_data['filename']
+    data = file_data['data']
+    ext = get_encryption_file_extension(filename)
+    mime_type = get_encryption_mime_type(filename)
+    
+    # Generate watermark text
+    watermark_text = f"CONFIDENTIAL • {datetime.now().strftime('%Y-%m-%d %H:%M')} • View Only"
+    
+    viewable, category = is_file_viewable(filename)
+    
+    if not viewable:
+        return render_template('encryption_viewer_error.html', message="This file type cannot be viewed in browser")
+    
+    if category == 'images':
+        image_base64 = base64.b64encode(data).decode()
+        return render_template(
+            'encryption_viewer_image.html',
+            filename=filename,
+            image_data=f"data:{mime_type};base64,{image_base64}",
+            watermark=watermark_text
+        )
+    
+    elif category == 'documents' and ext == 'pdf':
+        pdf_base64 = base64.b64encode(data).decode()
+        return render_template(
+            'encryption_viewer_pdf.html',
+            filename=filename,
+            pdf_data=pdf_base64,
+            watermark=watermark_text
+        )
+    
+    elif category in ['text', 'code']:
+        try:
+            text_content = data.decode('utf-8')
+        except:
+            text_content = data.decode('latin-1')
+        
+        return render_template(
+            'encryption_viewer_text.html',
+            filename=filename,
+            content=text_content,
+            is_code=(category == 'code'),
+            language=ext,
+            watermark=watermark_text
+        )
+    
+    return render_template('encryption_viewer_error.html', message="Unable to display file")
+
+@app.route('/encryption/file-content/<token>')
+def get_encryption_file_content(token):
+    """Get raw file content for embedding (internal use)"""
+    if token not in encryption_file_storage:
+        return jsonify({'status': 'error'}), 404
+    
+    file_data = encryption_file_storage[token]
+    
+    if datetime.now() > file_data['expires']:
+        del encryption_file_storage[token]
+        return jsonify({'status': 'error'}), 410
+    
+    mime_type = get_encryption_mime_type(file_data['filename'])
+    
+    return Response(
+        file_data['data'],
+        mimetype=mime_type,
+        headers={
+            'Content-Disposition': 'inline',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'X-Content-Type-Options': 'nosniff'
+        }
+    )
+
+@app.route('/encryption/download/<token>')
+def download_encrypted_file(token):
+    """Download a processed file by its token - only for encrypted files"""
+    if token not in encryption_file_storage:
+        return jsonify({
+            'status': 'error', 
+            'message': 'File not found or has been destroyed'
+        }), 404
+    
+    file_data = encryption_file_storage[token]
+    
+    # Block ALL decrypted files from download - they must use view-only
+    if file_data.get('is_decrypted', False):
+        return jsonify({
+            'status': 'error',
+            'message': 'Decrypted files can only be viewed, not downloaded'
+        }), 403
+    
+    if datetime.now() > file_data['expires']:
+        del encryption_file_storage[token]
+        return jsonify({
+            'status': 'error', 
+            'message': 'File has expired or been destroyed'
+        }), 410
+    
+    encryption_file_storage[token]['download_count'] += 1
+    
+    return send_file(
+        io.BytesIO(file_data['data']),
+        download_name=file_data['filename'],
+        as_attachment=True
+    )
+
+@app.route('/encryption/download-zip', methods=['POST'])
+def download_encrypted_zip():
+    tokens = request.json.get('tokens', [])
+    
+    if not tokens:
+        return jsonify({'status': 'error', 'message': 'No files selected'}), 400
+    
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for token in tokens:
+            if token in encryption_file_storage:
+                file_data = encryption_file_storage[token]
+                if not file_data.get('is_decrypted', False) and datetime.now() <= file_data['expires']:
+                    zip_file.writestr(file_data['filename'], file_data['data'])
+    
+    zip_buffer.seek(0)
+    
+    return send_file(
+        zip_buffer,
+        download_name='encrypted_files.zip',
+        as_attachment=True,
+        mimetype='application/zip'
+    )
+
+@app.route('/encryption/generate-qr', methods=['POST'])
+def generate_encryption_qr():
+    key = request.json.get('key', '')
+    
+    if not key:
+        return jsonify({'status': 'error', 'message': 'No key provided'}), 400
+    
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(key)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return jsonify({
+        'status': 'success',
+        'qr_code': f"data:image/png;base64,{qr_base64}"
+    })
+
+@app.route('/encryption/file-info/<token>')
+def get_encryption_file_info(token):
+    if token not in encryption_file_storage:
+        return jsonify({'status': 'error', 'message': 'File not found'}), 404
+    
+    file_data = encryption_file_storage[token]
+    remaining_time = (file_data['expires'] - datetime.now()).total_seconds()
+    
+    return jsonify({
+        'status': 'success',
+        'filename': file_data['filename'],
+        'size': file_data['size'],
+        'expires_in_seconds': max(0, int(remaining_time)),
+        'created': file_data['created'].isoformat(),
+        'view_only': file_data.get('view_only', False)
+    })
+
+
+# =============================================================================
+# FILE MONITORING ROUTES
+# =============================================================================
+
+# Import file monitor module
+try:
+    from modules.file_monitor import get_file_monitor, WATCHDOG_AVAILABLE
+    FILE_MONITOR_AVAILABLE = WATCHDOG_AVAILABLE
+except ImportError as e:
+    print(f"Warning: File monitoring not available: {e}")
+    FILE_MONITOR_AVAILABLE = False
+
+@app.route('/file-monitoring')
+def file_monitoring():
+    """File monitoring dashboard"""
+    return render_template('file_monitoring.html')
+
+@app.route('/api/file-monitor/start', methods=['POST'])
+def start_file_monitoring():
+    """Start file monitoring."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({'status': 'error', 'message': 'File monitoring not available. Install watchdog: pip install watchdog'}), 503
+    
+    monitor = get_file_monitor(socketio)
+    result = monitor.start()
+    return jsonify(result)
+
+@app.route('/api/file-monitor/stop', methods=['POST'])
+def stop_file_monitoring():
+    """Stop file monitoring."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({'status': 'error', 'message': 'File monitoring not available'}), 503
+    
+    monitor = get_file_monitor(socketio)
+    result = monitor.stop()
+    return jsonify(result)
+
+@app.route('/api/file-monitor/add-directory', methods=['POST'])
+def add_monitor_directory():
+    """Add a directory to watch list."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({'status': 'error', 'message': 'File monitoring not available'}), 503
+    
+    data = request.json
+    directory = data.get('directory', '').strip()
+    
+    if not directory:
+        return jsonify({'status': 'error', 'message': 'No directory provided'})
+    
+    monitor = get_file_monitor(socketio)
+    result = monitor.add_directory(directory)
+    return jsonify(result)
+
+@app.route('/api/file-monitor/remove-directory', methods=['POST'])
+def remove_monitor_directory():
+    """Remove a directory from watch list."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({'status': 'error', 'message': 'File monitoring not available'}), 503
+    
+    data = request.json
+    directory = data.get('directory', '').strip()
+    
+    monitor = get_file_monitor(socketio)
+    result = monitor.remove_directory(directory)
+    return jsonify(result)
+
+@app.route('/api/file-monitor/events', methods=['GET'])
+def get_monitor_events():
+    """Get recent file events."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({'status': 'error', 'events': []})
+    
+    limit = request.args.get('limit', 50, type=int)
+    monitor = get_file_monitor(socketio)
+    events = monitor.get_events(limit)
+    return jsonify({'status': 'success', 'events': events})
+
+@app.route('/api/file-monitor/stats', methods=['GET'])
+def get_monitor_stats():
+    """Get monitoring statistics."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({'status': 'error', 'stats': {}})
+    
+    monitor = get_file_monitor(socketio)
+    stats = monitor.get_stats()
+    return jsonify({'status': 'success', 'stats': stats})
+
+@app.route('/api/file-monitor/status', methods=['GET'])
+def get_monitor_status():
+    """Get monitoring status."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({
+            'is_monitoring': False,
+            'directories': [],
+            'watchdog_available': False
+        })
+    
+    monitor = get_file_monitor(socketio)
+    return jsonify(monitor.get_status())
+
+@app.route('/api/file-monitor/filters', methods=['POST'])
+def set_monitor_filters():
+    """Set event filtering options."""
+    if not FILE_MONITOR_AVAILABLE:
+        return jsonify({'status': 'error', 'message': 'File monitoring not available'}), 503
+    
+    data = request.json
+    extensions = data.get('extensions')
+    categories = data.get('categories')
+    exclude_patterns = data.get('exclude_patterns')
+    
+    monitor = get_file_monitor(socketio)
+    monitor.set_filters(extensions, categories, exclude_patterns)
+    
+    return jsonify({'status': 'success', 'message': 'Filters updated'})
+
+
+# =============================================================================
+# AI CHATBOT ROUTES
+# =============================================================================
+
+# Initialize AI agent (lazy loaded)
+ai_agent = None
+
+def get_ai_agent():
+    """Get or create AI agent instance."""
+    global ai_agent
+    if ai_agent is None:
+        try:
+            from agentic import get_agent
+            ai_agent = get_agent()
+        except Exception as e:
+            logger.error(f"Failed to initialize AI agent: {e}")
+            return None
+    return ai_agent
+
+@app.route('/api/chat', methods=['POST'])
+def chat_api():
+    """Handle chat messages to AI assistant."""
+    agent = get_ai_agent()
+    
+    if not agent:
+        return jsonify({
+            'status': 'error',
+            'message': 'AI assistant not available. Check GROQ_API_KEY and dependencies.'
+        }), 503
+    
+    data = request.get_json()
+    query = data.get('message', '')
+    user_id = data.get('user_id', 'default')
+    page_context = data.get('page_context', {})
+    
+    if not query:
+        return jsonify({'status': 'error', 'message': 'No message provided'}), 400
+    
+    try:
+        import asyncio
+        # Run async chat in sync context
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(agent.chat(user_id, query, socketio, page_context))
+        loop.close()
+        
+        return jsonify({
+            'status': 'success',
+            'response': result.get('response', ''),
+            'tools_used': result.get('tools_used', []),
+            'processing_time': result.get('processing_time', 0)
+        })
+    except Exception as e:
+        logger.error(f"Chat error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/chat/history', methods=['GET'])
+def chat_history():
+    """Get conversation history."""
+    user_id = request.args.get('user_id', 'default')
+    agent = get_ai_agent()
+    
+    if not agent:
+        return jsonify({'history': []})
+    
+    history = agent.get_history(user_id)
+    return jsonify({'history': history})
+
+@app.route('/api/chat/clear', methods=['POST'])
+def clear_chat():
+    """Clear conversation history."""
+    data = request.get_json()
+    user_id = data.get('user_id', 'default')
+    agent = get_ai_agent()
+    
+    if agent:
+        agent.clear_history(user_id)
+    
+    return jsonify({'status': 'success'})
+
+
+# ========================================
+# Activity Tracking API
+# ========================================
+
+def get_activity_tracker_instance():
+    """Get the activity tracker singleton."""
+    try:
+        from agentic.memory import get_activity_tracker
+        return get_activity_tracker()
+    except Exception as e:
+        logger.warning(f"Could not get activity tracker: {e}")
+        return None
+
+@app.route('/api/activity/log', methods=['POST'])
+def log_activity():
+    """Log a security activity for a user."""
+    data = request.get_json()
+    user_id = data.get('user_id', 'default')
+    activity_type = data.get('activity_type', 'unknown')
+    summary = data.get('summary', '')
+    details = data.get('details', {})
+    
+    tracker = get_activity_tracker_instance()
+    if tracker:
+        tracker.log_activity(user_id, activity_type, summary, details)
+        return jsonify({'status': 'success', 'message': 'Activity logged'})
+    
+    return jsonify({'status': 'error', 'message': 'Activity tracker not available'}), 503
+
+@app.route('/api/activity/summary', methods=['GET'])
+def get_activity_summary():
+    """Get activity summary for a user."""
+    user_id = request.args.get('user_id', 'default')
+    
+    tracker = get_activity_tracker_instance()
+    if tracker:
+        summary = tracker.get_activity_summary(user_id)
+        return jsonify({'status': 'success', 'summary': summary})
+    
+    return jsonify({'status': 'error', 'summary': {}}), 503
+
+@app.route('/api/activity/recent', methods=['GET'])
+def get_recent_activities():
+    """Get recent activities for a user."""
+    user_id = request.args.get('user_id', 'default')
+    limit = request.args.get('limit', 10, type=int)
+    
+    tracker = get_activity_tracker_instance()
+    if tracker:
+        activities = tracker.get_recent_activities(user_id, limit)
+        return jsonify({'status': 'success', 'activities': activities})
+    
+    return jsonify({'status': 'error', 'activities': []}), 503
+
+
+# ========================================
+# Malware Scanner (VirusTotal Integration)
+# ========================================
+
+# Initialize malware scanner components
+MALWARE_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'malware')
+MALWARE_DB_PATH = os.path.join(os.path.dirname(__file__), 'databases', 'malware_scans.db')
+VIRUSTOTAL_API_KEY = os.environ.get('VIRUS_TOTAL_API', '')
+
+# Create upload folder
+os.makedirs(MALWARE_UPLOAD_FOLDER, exist_ok=True)
+
+# Initialize malware scanner
+malware_scanner = None
+try:
+    from modules.malware_scanner import VirusTotalScanner
+    if VIRUSTOTAL_API_KEY:
+        malware_scanner = VirusTotalScanner(VIRUSTOTAL_API_KEY)
+        logger.info("VirusTotal Malware Scanner initialized")
+    else:
+        logger.warning("VIRUS_TOTAL_API environment variable not set - Malware Scanner disabled")
+except ImportError as e:
+    logger.warning(f"Malware Scanner not available: {e}")
+
+
+def init_malware_db():
+    """Initialize the malware scan results database."""
+    conn = sqlite3.connect(MALWARE_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS scan_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_type TEXT NOT NULL,
+            target_name TEXT NOT NULL,
+            file_hash TEXT,
+            file_size INTEGER,
+            analysis_id TEXT,
+            malicious_count INTEGER DEFAULT 0,
+            suspicious_count INTEGER DEFAULT 0,
+            harmless_count INTEGER DEFAULT 0,
+            undetected_count INTEGER DEFAULT 0,
+            timeout_count INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            error_message TEXT,
+            vt_link TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+# Initialize malware database
+init_malware_db()
+
+
+def get_malware_db_connection():
+    """Get a connection to the malware scans database."""
+    conn = sqlite3.connect(MALWARE_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def calculate_threat_level(malicious, suspicious):
+    """Calculate threat level based on detection counts."""
+    if malicious > 5:
+        return 'high'
+    elif malicious > 0 or suspicious > 3:
+        return 'medium'
+    elif suspicious > 0:
+        return 'low'
+    else:
+        return 'safe'
+
+
+@app.route('/malware-scanner')
+def malware_scanner_page():
+    """Malware Scanner page."""
+    return render_template('malware_scanner.html')
+
+
+@app.route('/api/malware/status')
+def malware_api_status():
+    """Check VirusTotal API connection status."""
+    if not malware_scanner:
+        return jsonify({
+            'connected': False,
+            'message': 'VirusTotal API not configured',
+            'api_configured': bool(VIRUSTOTAL_API_KEY)
+        })
+    
+    is_connected, message = malware_scanner.test_connection()
+    return jsonify({
+        'connected': is_connected,
+        'message': message,
+        'api_configured': bool(VIRUSTOTAL_API_KEY)
+    })
+
+
+@app.route('/api/malware/scan/file', methods=['POST'])
+def malware_scan_file():
+    """Upload and scan a file for malware."""
+    if not malware_scanner:
+        return jsonify({'success': False, 'error': 'Malware scanner not configured. Set VIRUS_TOTAL_API environment variable.'}), 503
+    
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+    
+    from werkzeug.utils import secure_filename
+    import uuid
+    
+    # Create a unique filename to avoid conflicts
+    original_filename = secure_filename(file.filename)
+    unique_id = str(uuid.uuid4())[:8]
+    filename = f"{unique_id}_{original_filename}"
+    
+    # Use MALWARE_UPLOAD_FOLDER (should be excluded from Windows Defender for malware testing)
+    # This folder must be excluded from antivirus to allow malware file uploads
+    os.makedirs(MALWARE_UPLOAD_FOLDER, exist_ok=True)
+    file_path = os.path.join(MALWARE_UPLOAD_FOLDER, filename)
+    
+    try:
+        # Read file content into memory first
+        file_content = file.read()
+        
+        # Write using standard Python with explicit binary mode
+        with open(file_path, 'wb') as f:
+            f.write(file_content)
+        
+        file_size = os.path.getsize(file_path)
+        
+        # Calculate file hash
+        file_hash = malware_scanner.calculate_hash(file_path)
+        
+        # Insert scan record into database
+        conn = get_malware_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO scan_results (scan_type, target_name, file_hash, file_size, vt_link)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('file', original_filename, file_hash, file_size, f"https://www.virustotal.com/gui/file/{file_hash}"))
+        scan_id = cursor.lastrowid
+        conn.commit()
+        
+        # Check if file already exists in VT database
+        success, report = malware_scanner.check_file_report(file_hash)
+        
+        if success and report.get('found'):
+            # File already analyzed
+            stats = report.get('stats', {})
+            cursor.execute('''
+                UPDATE scan_results SET 
+                    malicious_count = ?, suspicious_count = ?, harmless_count = ?,
+                    undetected_count = ?, timeout_count = ?, status = ?
+                WHERE id = ?
+            ''', (
+                stats.get('malicious', 0), stats.get('suspicious', 0),
+                stats.get('harmless', 0), stats.get('undetected', 0),
+                stats.get('timeout', 0), 'completed', scan_id
+            ))
+            conn.commit()
+            conn.close()
+            
+            # Clean up file immediately after getting hash
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except:
+                pass
+            
+            result = {
+                'id': scan_id,
+                'scan_type': 'file',
+                'target_name': original_filename,
+                'file_hash': file_hash,
+                'file_size': file_size,
+                'malicious_count': stats.get('malicious', 0),
+                'suspicious_count': stats.get('suspicious', 0),
+                'harmless_count': stats.get('harmless', 0),
+                'undetected_count': stats.get('undetected', 0),
+                'timeout_count': stats.get('timeout', 0),
+                'total_engines': sum(stats.values()),
+                'status': 'completed',
+                'vt_link': f"https://www.virustotal.com/gui/file/{file_hash}",
+                'threat_level': calculate_threat_level(stats.get('malicious', 0), stats.get('suspicious', 0))
+            }
+            return jsonify({'success': True, 'result': result, 'cached': True})
+        
+        # Upload file for scanning
+        success, upload_result = malware_scanner.upload_file(file_path)
+        
+        # Clean up file after upload attempt
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except:
+            pass
+        
+        if not success:
+            cursor.execute('UPDATE scan_results SET status = ?, error_message = ? WHERE id = ?',
+                         ('error', upload_result.get('error', 'Upload failed'), scan_id))
+            conn.commit()
+            conn.close()
+            return jsonify({'success': False, 'error': upload_result.get('error')}), 400
+        
+        cursor.execute('UPDATE scan_results SET analysis_id = ? WHERE id = ?',
+                      (upload_result.get('analysis_id'), scan_id))
+        conn.commit()
+        
+        # Wait for analysis to complete
+        analysis_success, analysis = malware_scanner.wait_for_analysis(
+            upload_result.get('analysis_id'), max_attempts=15, delay=2
+        )
+        
+        if analysis_success:
+            stats = analysis.get('stats', {})
+            cursor.execute('''
+                UPDATE scan_results SET 
+                    malicious_count = ?, suspicious_count = ?, harmless_count = ?,
+                    undetected_count = ?, timeout_count = ?, status = ?
+                WHERE id = ?
+            ''', (
+                stats.get('malicious', 0), stats.get('suspicious', 0),
+                stats.get('harmless', 0), stats.get('undetected', 0),
+                stats.get('timeout', 0), 'completed', scan_id
+            ))
+            conn.commit()
+            
+            result = {
+                'id': scan_id,
+                'scan_type': 'file',
+                'target_name': original_filename,
+                'file_hash': file_hash,
+                'file_size': file_size,
+                'malicious_count': stats.get('malicious', 0),
+                'suspicious_count': stats.get('suspicious', 0),
+                'harmless_count': stats.get('harmless', 0),
+                'undetected_count': stats.get('undetected', 0),
+                'timeout_count': stats.get('timeout', 0),
+                'total_engines': sum(stats.values()),
+                'status': 'completed',
+                'vt_link': f"https://www.virustotal.com/gui/file/{file_hash}",
+                'threat_level': calculate_threat_level(stats.get('malicious', 0), stats.get('suspicious', 0))
+            }
+        else:
+            cursor.execute('UPDATE scan_results SET status = ?, error_message = ? WHERE id = ?',
+                         ('pending', 'Analysis in progress - check back later', scan_id))
+            conn.commit()
+            result = {
+                'id': scan_id,
+                'scan_type': 'file',
+                'target_name': original_filename,
+                'file_hash': file_hash,
+                'file_size': file_size,
+                'status': 'pending',
+                'vt_link': f"https://www.virustotal.com/gui/file/{file_hash}",
+                'threat_level': 'unknown'
+            }
+        
+        conn.close()
+        return jsonify({'success': True, 'result': result})
+        
+    except Exception as e:
+        logger.error(f"Malware file scan error: {e}")
+        # Clean up file on error
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except:
+            pass
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/malware/scan/url', methods=['POST'])
+def malware_scan_url():
+    """Scan a URL for malicious content."""
+    if not malware_scanner:
+        return jsonify({'success': False, 'error': 'Malware scanner not configured'}), 503
+    
+    data = request.get_json()
+    
+    if not data or 'url' not in data:
+        return jsonify({'success': False, 'error': 'No URL provided'}), 400
+    
+    url = data['url'].strip()
+    
+    if not url:
+        return jsonify({'success': False, 'error': 'URL cannot be empty'}), 400
+    
+    import base64
+    url_id = base64.urlsafe_b64encode(url.encode()).decode().strip("=")
+    
+    # Insert scan record
+    conn = get_malware_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO scan_results (scan_type, target_name, vt_link)
+        VALUES (?, ?, ?)
+    ''', ('url', url, f"https://www.virustotal.com/gui/url/{url_id}"))
+    scan_id = cursor.lastrowid
+    conn.commit()
+    
+    try:
+        # Submit URL for scanning
+        success, result = malware_scanner.scan_url(url)
+        
+        if not success:
+            cursor.execute('UPDATE scan_results SET status = ?, error_message = ? WHERE id = ?',
+                         ('error', result.get('error', 'Scan failed'), scan_id))
+            conn.commit()
+            conn.close()
+            return jsonify({'success': False, 'error': result.get('error')}), 400
+        
+        cursor.execute('UPDATE scan_results SET analysis_id = ? WHERE id = ?',
+                      (result.get('analysis_id'), scan_id))
+        conn.commit()
+        
+        # Wait for analysis
+        analysis_success, analysis = malware_scanner.wait_for_analysis(
+            result.get('analysis_id'), max_attempts=15, delay=2
+        )
+        
+        if analysis_success:
+            stats = analysis.get('stats', {})
+            cursor.execute('''
+                UPDATE scan_results SET 
+                    malicious_count = ?, suspicious_count = ?, harmless_count = ?,
+                    undetected_count = ?, timeout_count = ?, status = ?
+                WHERE id = ?
+            ''', (
+                stats.get('malicious', 0), stats.get('suspicious', 0),
+                stats.get('harmless', 0), stats.get('undetected', 0),
+                stats.get('timeout', 0), 'completed', scan_id
+            ))
+            conn.commit()
+            
+            scan_result = {
+                'id': scan_id,
+                'scan_type': 'url',
+                'target_name': url,
+                'malicious_count': stats.get('malicious', 0),
+                'suspicious_count': stats.get('suspicious', 0),
+                'harmless_count': stats.get('harmless', 0),
+                'undetected_count': stats.get('undetected', 0),
+                'timeout_count': stats.get('timeout', 0),
+                'total_engines': sum(stats.values()),
+                'status': 'completed',
+                'vt_link': f"https://www.virustotal.com/gui/url/{url_id}",
+                'threat_level': calculate_threat_level(stats.get('malicious', 0), stats.get('suspicious', 0))
+            }
+        else:
+            cursor.execute('UPDATE scan_results SET status = ?, error_message = ? WHERE id = ?',
+                         ('pending', 'Analysis in progress', scan_id))
+            conn.commit()
+            scan_result = {
+                'id': scan_id,
+                'scan_type': 'url',
+                'target_name': url,
+                'status': 'pending',
+                'vt_link': f"https://www.virustotal.com/gui/url/{url_id}",
+                'threat_level': 'unknown'
+            }
+        
+        conn.close()
+        return jsonify({'success': True, 'result': scan_result})
+        
+    except Exception as e:
+        logger.error(f"Malware URL scan error: {e}")
+        cursor.execute('UPDATE scan_results SET status = ?, error_message = ? WHERE id = ?',
+                     ('error', str(e), scan_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/malware/history')
+def malware_get_history():
+    """Get malware scan history."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    scan_type = request.args.get('type', None)
+    
+    conn = get_malware_db_connection()
+    cursor = conn.cursor()
+    
+    # Build query
+    if scan_type:
+        cursor.execute('SELECT COUNT(*) FROM scan_results WHERE scan_type = ?', (scan_type,))
+    else:
+        cursor.execute('SELECT COUNT(*) FROM scan_results')
+    
+    total = cursor.fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    
+    offset = (page - 1) * per_page
+    
+    if scan_type:
+        cursor.execute('''
+            SELECT * FROM scan_results WHERE scan_type = ?
+            ORDER BY created_at DESC LIMIT ? OFFSET ?
+        ''', (scan_type, per_page, offset))
+    else:
+        cursor.execute('''
+            SELECT * FROM scan_results
+            ORDER BY created_at DESC LIMIT ? OFFSET ?
+        ''', (per_page, offset))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    results = []
+    for row in rows:
+        total_engines = (row['malicious_count'] or 0) + (row['suspicious_count'] or 0) + \
+                       (row['harmless_count'] or 0) + (row['undetected_count'] or 0) + (row['timeout_count'] or 0)
+        
+        results.append({
+            'id': row['id'],
+            'scan_type': row['scan_type'],
+            'target_name': row['target_name'],
+            'file_hash': row['file_hash'],
+            'file_size': row['file_size'],
+            'malicious_count': row['malicious_count'] or 0,
+            'suspicious_count': row['suspicious_count'] or 0,
+            'harmless_count': row['harmless_count'] or 0,
+            'undetected_count': row['undetected_count'] or 0,
+            'timeout_count': row['timeout_count'] or 0,
+            'total_engines': total_engines,
+            'status': row['status'],
+            'vt_link': row['vt_link'],
+            'created_at': row['created_at'],
+            'threat_level': calculate_threat_level(row['malicious_count'] or 0, row['suspicious_count'] or 0)
+                          if row['status'] == 'completed' else 'unknown'
+        })
+    
+    return jsonify({
+        'success': True,
+        'results': results,
+        'total': total,
+        'pages': total_pages,
+        'current_page': page
+    })
+
+
 # SocketIO events
+
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')
@@ -1880,9 +3221,57 @@ def handle_connect():
 def handle_disconnect():
     print('Client disconnected')
 
+@socketio.on('join_chat')
+def handle_join_chat(data):
+    """Join chat room for real-time updates."""
+    from flask_socketio import join_room
+    user_id = data.get('user_id', 'default')
+    join_room(user_id)
+    print(f'User {user_id} joined chat')
+
+@socketio.on('chat_message')
+def handle_chat_message(data):
+    """Handle chat message via WebSocket."""
+    from flask_socketio import emit
+    
+    agent = get_ai_agent()
+    user_id = data.get('user_id', 'default')
+    query = data.get('message', '')
+    
+    if not agent:
+        emit('chat_response', {
+            'status': 'error',
+            'response': 'AI assistant not available. Please check GROQ_API_KEY.'
+        }, room=user_id)
+        return
+    
+    if not query:
+        return
+    
+    try:
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(agent.chat(user_id, query, socketio))
+        loop.close()
+        
+        emit('chat_response', {
+            'status': 'success',
+            'response': result.get('response', ''),
+            'tools_used': result.get('tools_used', []),
+            'processing_time': result.get('processing_time', 0)
+        }, room=user_id)
+    except Exception as e:
+        logger.error(f"WebSocket chat error: {e}")
+        emit('chat_response', {
+            'status': 'error',
+            'response': f'Error: {str(e)}'
+        }, room=user_id)
+
+
 if __name__ == '__main__':
     print("=" * 60)
-    print(" DLP PLATFORM - Integrated Security Dashboard")
+    print(" AEGIS DLP - Unified Data Loss Prevention Platform")
     print("=" * 60)
     print()
     print("Server starting on http://localhost:5000")
@@ -1891,12 +3280,16 @@ if __name__ == '__main__':
     print("  1. Anomaly Detection (MLP Model)")
     print("  2. Data Classification (RoBERTa Model)")
     print("  3. Phishing Detection (RoBERTa + YARA)")
+    print("  4. File Encryption (AES-256 Fernet)")
+    print("  5. File Monitoring (Watchdog)")
+    print("  6. AI Security Assistant (Groq + ChromaDB)")
+    print("  7. Malware Scanner (VirusTotal API)")
     print()
     
     # Pre-load the data classifier to avoid restart issues
     print("Pre-loading Data Classification Model...")
     try:
-        from data_classifier import get_classifier
+        from modules.data_classifier import get_classifier
         _ = get_classifier()  # Initialize classifier once
         print("✓ Data Classification Model loaded!")
     except Exception as e:
@@ -1907,7 +3300,7 @@ if __name__ == '__main__':
     if PHISHING_AVAILABLE:
         print("Pre-loading Phishing Detection Model...")
         try:
-            from body_classifier import predict_body_label
+            from modules.body_classifier import predict_body_label
             _ = predict_body_label("Test email content")
             print("✓ Phishing Detection Model loaded!")
         except Exception as e:

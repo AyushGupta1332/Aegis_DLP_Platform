@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Monitoring - Aegis DLP</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        }
+
+        .card-glass {
+            background: rgba(30, 30, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .event-row {
+            transition: all 0.3s ease;
+        }
+
+        .event-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .event-created {
+            border-left: 3px solid #10b981;
+        }
+
+        .event-modified {
+            border-left: 3px solid #3b82f6;
+        }
+
+        .event-deleted {
+            border-left: 3px solid #ef4444;
+        }
+
+        .event-moved {
+            border-left: 3px solid #8b5cf6;
+        }
+
+        .severity-info {
+            color: #60a5fa;
+        }
+
+        .severity-warning {
+            color: #fbbf24;
+        }
+
+        .severity-critical {
+            color: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .scroll-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .scroll-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroll-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .scroll-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-active {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .status-inactive {
+            background: #6b7280;
+        }
+
+        .directory-tag {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+    </style>
+</head>
+
+<body class="gradient-bg min-h-screen text-white">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full top-0 z-50 bg-gray-900/80 backdrop-blur-lg border-b border-gray-800">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="flex items-center space-x-3">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                </path>
+                            </svg>
+                        </div>
+                        <span
+                            class="text-xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">File
+                            Monitor</span>
+                    </a>
+                </div>
+                <a href="/"
+                    class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition duration-300 text-sm">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 pt-24 pb-12">
+
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">Real-Time File Monitoring</h1>
+            <p class="text-gray-400">Monitor directories for file changes with threat detection</p>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+
+            <!-- Directory Input -->
+            <div class="md:col-span-2 card-glass rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                    </svg>
+                    Watch Directories
+                </h3>
+
+                <div class="flex gap-3 mb-4">
+                    <input type="text" id="directoryInput"
+                        class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+                        placeholder="Enter directory path (e.g., C:\Users\Documents)">
+                    <button onclick="addDirectory()"
+                        class="px-6 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 rounded-lg font-semibold hover:shadow-lg hover:shadow-amber-500/30 transition duration-300">
+                        Add
+                    </button>
+                </div>
+
+                <!-- Directory Tags -->
+                <div id="directoryTags" class="flex flex-wrap gap-2">
+                    <!-- Directory tags will be added here -->
+                </div>
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="card-glass rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <span id="statusIndicator" class="status-indicator status-inactive mr-2"></span>
+                    Status: <span id="statusText" class="ml-2 text-gray-400">Inactive</span>
+                </h3>
+
+                <div class="space-y-3">
+                    <button id="startBtn" onclick="startMonitoring()"
+                        class="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg font-semibold hover:shadow-lg hover:shadow-green-500/30 transition duration-300 flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Start Monitoring
+                    </button>
+
+                    <button id="stopBtn" onclick="stopMonitoring()" disabled
+                        class="w-full px-6 py-3 bg-gray-700 rounded-lg font-semibold transition duration-300 flex items-center justify-center opacity-50 cursor-not-allowed">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                        </svg>
+                        Stop Monitoring
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-white" id="statTotal">0</div>
+                <div class="text-sm text-gray-400">Total Events</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-green-400" id="statCreated">0</div>
+                <div class="text-sm text-gray-400">Created</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-blue-400" id="statModified">0</div>
+                <div class="text-sm text-gray-400">Modified</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-red-400" id="statDeleted">0</div>
+                <div class="text-sm text-gray-400">Deleted</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-yellow-400" id="statWarnings">0</div>
+                <div class="text-sm text-gray-400">Warnings</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-red-500" id="statCritical">0</div>
+                <div class="text-sm text-gray-400">Critical</div>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <div id="alertsContainer" class="mb-6 hidden">
+            <!-- Threat alerts will appear here -->
+        </div>
+
+        <!-- Event Log -->
+        <div class="card-glass rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                        </path>
+                    </svg>
+                    Event Log
+                </h3>
+
+                <!-- Filter Buttons -->
+                <div class="flex gap-2">
+                    <button onclick="filterEvents('all')"
+                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                        data-filter="all">All</button>
+                    <button onclick="filterEvents('created')"
+                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                        data-filter="created">Created</button>
+                    <button onclick="filterEvents('modified')"
+                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                        data-filter="modified">Modified</button>
+                    <button onclick="filterEvents('deleted')"
+                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                        data-filter="deleted">Deleted</button>
+                </div>
+            </div>
+
+            <div id="eventLog" class="scroll-container">
+                <div id="emptyState" class="text-center py-12 text-gray-500">
+                    <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                        </path>
+                    </svg>
+                    <p>No events yet. Add directories and start monitoring to see file changes.</p>
+                </div>
+
+                <div id="eventsList" class="space-y-2 hidden">
+                    <!-- Events will be added here -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 space-y-3 z-50">
+        <!-- Toasts will appear here -->
+    </div>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+        let isMonitoring = false;
+        let watchedDirectories = [];
+        let events = [];
+        let currentFilter = 'all';
+
+        // Socket.IO event handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            loadStatus();
+        });
+
+        socket.on('file_event', (event) => {
+            addEventToLog(event);
+            updateStats();
+        });
+
+        socket.on('monitor_stats', (stats) => {
+            updateStatsDisplay(stats);
+        });
+
+        socket.on('threat_alert', (alert) => {
+            showThreatAlert(alert);
+        });
+
+        // Load initial status
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/file-monitor/status');
+                const data = await response.json();
+
+                isMonitoring = data.is_monitoring;
+                watchedDirectories = data.directories || [];
+
+                updateUIState();
+                renderDirectoryTags();
+
+                if (isMonitoring) {
+                    loadEvents();
+                    loadStats();
+                }
+            } catch (error) {
+                console.error('Error loading status:', error);
+            }
+        }
+
+        // Load events
+        async function loadEvents() {
+            try {
+                const response = await fetch('/api/file-monitor/events?limit=100');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    events = data.events;
+                    renderEvents();
+                }
+            } catch (error) {
+                console.error('Error loading events:', error);
+            }
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/file-monitor/stats');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updateStatsDisplay(data.stats);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Add directory
+        async function addDirectory() {
+            const input = document.getElementById('directoryInput');
+            const directory = input.value.trim();
+
+            if (!directory) {
+                showToast('Please enter a directory path', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/file-monitor/add-directory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ directory })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    watchedDirectories.push(directory);
+                    renderDirectoryTags();
+                    input.value = '';
+                    showToast(data.message, 'success');
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                showToast('Failed to add directory', 'error');
+            }
+        }
+
+        // Remove directory
+        async function removeDirectory(directory) {
+            try {
+                const response = await fetch('/api/file-monitor/remove-directory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ directory })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    watchedDirectories = watchedDirectories.filter(d => d !== directory);
+                    renderDirectoryTags();
+                    showToast(data.message, 'success');
+                }
+            } catch (error) {
+                showToast('Failed to remove directory', 'error');
+            }
+        }
+
+        // Render directory tags
+        function renderDirectoryTags() {
+            const container = document.getElementById('directoryTags');
+            container.innerHTML = watchedDirectories.map(dir => `
+                <span class="directory-tag px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                    </svg>
+                    <span class="max-w-xs truncate">${dir}</span>
+                    <button onclick="removeDirectory('${dir.replace(/\\/g, '\\\\')}')" class="hover:text-red-400 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </span>
+            `).join('');
+        }
+
+        // Start monitoring
+        async function startMonitoring() {
+            if (watchedDirectories.length === 0) {
+                showToast('Please add at least one directory to watch', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/file-monitor/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    isMonitoring = true;
+                    updateUIState();
+                    showToast('Monitoring started', 'success');
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                showToast('Failed to start monitoring', 'error');
+            }
+        }
+
+        // Stop monitoring
+        async function stopMonitoring() {
+            try {
+                const response = await fetch('/api/file-monitor/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    isMonitoring = false;
+                    updateUIState();
+                    showToast('Monitoring stopped', 'success');
+                }
+            } catch (error) {
+                showToast('Failed to stop monitoring', 'error');
+            }
+        }
+
+        // Update UI state
+        function updateUIState() {
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+
+            if (isMonitoring) {
+                startBtn.disabled = true;
+                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                stopBtn.disabled = false;
+                stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                stopBtn.classList.add('bg-gradient-to-r', 'from-red-600', 'to-rose-600', 'hover:shadow-lg', 'hover:shadow-red-500/30');
+                stopBtn.classList.remove('bg-gray-700');
+                statusIndicator.classList.remove('status-inactive');
+                statusIndicator.classList.add('status-active');
+                statusText.textContent = 'Active';
+                statusText.classList.remove('text-gray-400');
+                statusText.classList.add('text-green-400');
+            } else {
+                startBtn.disabled = false;
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                stopBtn.disabled = true;
+                stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                stopBtn.classList.remove('bg-gradient-to-r', 'from-red-600', 'to-rose-600', 'hover:shadow-lg', 'hover:shadow-red-500/30');
+                stopBtn.classList.add('bg-gray-700');
+                statusIndicator.classList.add('status-inactive');
+                statusIndicator.classList.remove('status-active');
+                statusText.textContent = 'Inactive';
+                statusText.classList.add('text-gray-400');
+                statusText.classList.remove('text-green-400');
+            }
+        }
+
+        // Add event to log
+        function addEventToLog(event) {
+            events.unshift(event);
+            if (events.length > 100) events.pop();
+            renderEvents();
+        }
+
+        // Render events
+        function renderEvents() {
+            const emptyState = document.getElementById('emptyState');
+            const eventsList = document.getElementById('eventsList');
+
+            const filteredEvents = currentFilter === 'all'
+                ? events
+                : events.filter(e => e.event_type === currentFilter);
+
+            if (filteredEvents.length === 0) {
+                emptyState.classList.remove('hidden');
+                eventsList.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            eventsList.classList.remove('hidden');
+
+            eventsList.innerHTML = filteredEvents.map(event => `
+                <div class="event-row event-${event.event_type} rounded-lg p-3 bg-gray-800/50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            ${getEventIcon(event.event_type)}
+                            <div>
+                                <div class="font-medium flex items-center gap-2">
+                                    <span>${event.filename}</span>
+                                    ${event.severity !== 'info' ? `<span class="severity-${event.severity} text-xs uppercase font-bold">${event.severity}</span>` : ''}
+                                </div>
+                                <div class="text-sm text-gray-500 truncate max-w-md">${event.directory}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm text-gray-400">${event.timestamp_display}</div>
+                            <div class="text-xs text-gray-500 capitalize">${event.event_type}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Get event icon
+        function getEventIcon(type) {
+            const icons = {
+                created: '<svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>',
+                modified: '<svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>',
+                deleted: '<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>',
+                moved: '<svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>'
+            };
+            return icons[type] || icons.modified;
+        }
+
+        // Filter events
+        function filterEvents(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-600');
+                btn.classList.add('bg-gray-700');
+            });
+            document.querySelector(`[data-filter="${filter}"]`).classList.remove('bg-gray-700');
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('bg-amber-600');
+            renderEvents();
+        }
+
+        // Update stats
+        function updateStats() {
+            loadStats();
+        }
+
+        // Update stats display
+        function updateStatsDisplay(stats) {
+            document.getElementById('statTotal').textContent = stats.total_events || 0;
+            document.getElementById('statCreated').textContent = stats.created || 0;
+            document.getElementById('statModified').textContent = stats.modified || 0;
+            document.getElementById('statDeleted').textContent = stats.deleted || 0;
+            document.getElementById('statWarnings').textContent = stats.warnings || 0;
+            document.getElementById('statCritical').textContent = stats.critical || 0;
+        }
+
+        // Show threat alert
+        function showThreatAlert(alert) {
+            const container = document.getElementById('alertsContainer');
+            container.classList.remove('hidden');
+
+            const alertEl = document.createElement('div');
+            alertEl.className = 'bg-red-900/50 border border-red-500 rounded-xl p-4 mb-3 flex items-center justify-between';
+            alertEl.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <svg class="w-6 h-6 text-red-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <span class="font-medium">${alert.message}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            container.prepend(alertEl);
+
+            // Auto-remove after 30 seconds
+            setTimeout(() => alertEl.remove(), 30000);
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const colors = {
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-yellow-600',
+                info: 'bg-blue-600'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-75">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        // Enter key handler for directory input
+        document.getElementById('directoryInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addDirectory();
+        });
+
+        // Initialize filter button
+        filterEvents('all');
+    </script>
+
+</body>
+
+</html>

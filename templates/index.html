@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DLP Platform - Advanced Data Loss Prevention</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -111,7 +112,7 @@
                     <div
                         class="inline-flex items-center space-x-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-8 border border-white/20">
                         <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                        <span class="text-sm font-medium">AI-Powered Security Suite</span>
+                        <span class="text-sm font-medium">AI-Powered Security Suite By Aegis DLP</span>
                     </div>
                 </div>
 
@@ -125,8 +126,8 @@
 
                 <p class="text-xl md:text-2xl text-gray-300 mb-10 leading-relaxed" data-aos="fade-up"
                     data-aos-delay="200">
-                    Advanced ML-powered platform combining real-time network anomaly detection and intelligent data
-                    classification to safeguard your organization
+                    Enterprise-grade Data Loss Prevention suite with real-time threat detection,
+                    smart classification, email security, and encrypted file sharing
                 </p>
 
                 <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16" data-aos="fade-up"
@@ -153,6 +154,7 @@
                             3</div>
                         <div class="text-sm text-gray-400 mt-1">AI Models</div>
                     </div>
+
                     <div class="text-center">
                         <div
                             class="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -182,10 +184,20 @@
         <div class="container mx-auto px-6">
 
             <div class="text-center mb-16" data-aos="fade-up">
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">Powerful Security Solutions</h2>
-                <p class="text-xl text-gray-400 max-w-2xl mx-auto">Two cutting-edge AI systems working in harmony to
-                    protect your infrastructure</p>
+                <div
+                    class="inline-flex items-center space-x-2 px-4 py-2 bg-purple-500/10 backdrop-blur-sm rounded-full mb-6 border border-purple-500/20">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    <span class="text-sm font-medium text-purple-300">AI-Powered Security</span>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">Machine Learning Models</h2>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto">Three cutting-edge AI systems powered by neural
+                    networks and transformers to detect and prevent security threats</p>
             </div>
+
 
             <!-- Main Product Cards -->
             <div class="grid md:grid-cols-2 gap-8 mb-20">
@@ -202,11 +214,16 @@
                             </svg>
                         </div>
 
-                        <h3 class="text-2xl font-bold mb-3">Network Anomaly Detection</h3>
+                        <div class="flex items-center gap-3 mb-3">
+                            <h3 class="text-2xl font-bold">Network Anomaly Detection</h3>
+                            <span class="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">MLP
+                                Neural Network</span>
+                        </div>
                         <p class="text-gray-400 mb-6 leading-relaxed">
                             Real-time traffic analysis powered by Multi-Layer Perceptron neural networks. Detects
                             intrusions and suspicious patterns instantly.
                         </p>
+
 
                         <div class="space-y-3 mb-8">
                             <div class="flex items-center text-sm text-gray-300">
@@ -259,11 +276,17 @@
                             </svg>
                         </div>
 
-                        <h3 class="text-2xl font-bold mb-3">Intelligent Data Classification</h3>
+                        <div class="flex items-center gap-3 mb-3">
+                            <h3 class="text-2xl font-bold">Intelligent Data Classification</h3>
+                            <span
+                                class="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs font-medium rounded-full">RoBERTa
+                                Transformer</span>
+                        </div>
                         <p class="text-gray-400 mb-6 leading-relaxed">
                             Advanced NLP with RoBERTa transformers to scan and classify sensitive information across
                             multiple file formats.
                         </p>
+
 
                         <div class="space-y-3 mb-8">
                             <div class="flex items-center text-sm text-gray-300">
@@ -321,13 +344,19 @@
                             </div>
 
                             <div class="flex-grow text-center md:text-left">
-                                <h3 class="text-2xl font-bold mb-3">Email Phishing Detection</h3>
+                                <div class="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-3">
+                                    <h3 class="text-2xl font-bold">Email Phishing Detection</h3>
+                                    <span
+                                        class="px-2 py-1 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-full">RoBERTa
+                                        + YARA</span>
+                                </div>
                                 <p class="text-gray-400 mb-6 leading-relaxed max-w-2xl">
                                     Multi-layered AI security for email threats. Combines RoBERTa transformer for
                                     content analysis,
                                     URL reputation checking against 1M+ domains, and YARA signature scanning for malware
                                     detection.
                                 </p>
+
 
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                                     <div class="flex items-center text-sm text-gray-300">
@@ -378,7 +407,262 @@
                 </div>
             </div>
 
+            <!-- Utility Tools Section Header -->
+            <div class="text-center mb-12 mt-8" data-aos="fade-up">
+                <div
+                    class="inline-flex items-center space-x-2 px-4 py-2 bg-teal-500/10 backdrop-blur-sm rounded-full mb-6 border border-teal-500/20">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-teal-300">Security Utility</span>
+                </div>
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Data Protection Tools</h2>
+                <p class="text-lg text-gray-400 max-w-xl mx-auto">Essential security utilities for encrypting and
+                    protecting your sensitive files</p>
+            </div>
+
+            <!-- File Encryption Card - Full Width -->
+            <div class="mb-16" data-aos="fade-up" data-aos-delay="100">
+                <div class="relative group card-hover">
+                    <div
+                        class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 border border-gray-700 h-full">
+                        <div class="flex flex-col md:flex-row items-center md:items-start gap-8">
+                            <div
+                                class="w-20 h-20 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0 feature-icon">
+                                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                    </path>
+                                </svg>
+                            </div>
+
+                            <div class="flex-grow text-center md:text-left">
+                                <div class="flex items-center justify-center md:justify-start gap-3 mb-3">
+                                    <h3 class="text-2xl font-bold">Secure File Encryption</h3>
+                                    <span
+                                        class="px-2 py-1 bg-teal-500/20 text-teal-400 text-xs font-medium rounded-full">Utility
+                                        Tool</span>
+                                </div>
+                                <p class="text-gray-400 mb-6 leading-relaxed max-w-2xl">
+                                    Military-grade AES-256 encryption with view-only mode, watermarking, and
+                                    self-destruct
+                                    timers.
+                                    Share sensitive files securely with password protection and QR code key sharing.
+                                </p>
+
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-teal-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        AES-256 Encryption
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-teal-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        View-Only Mode
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-teal-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Self-Destruct Timer
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-teal-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        QR Key Sharing
+                                    </div>
+                                </div>
+
+                                <a href="/file-encryption"
+                                    class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-xl font-semibold hover:shadow-lg hover:shadow-teal-500/50 transition duration-300">
+                                    <span>Encrypt Files</span>
+                                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Monitoring Card - Full Width -->
+            <div class="mb-16" data-aos="fade-up" data-aos-delay="200">
+                <div class="relative group card-hover">
+                    <div
+                        class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 border border-gray-700 h-full">
+                        <div class="flex flex-col md:flex-row items-center md:items-start gap-8">
+                            <div
+                                class="w-20 h-20 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center flex-shrink-0 feature-icon">
+                                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                    </path>
+                                </svg>
+                            </div>
+
+                            <div class="flex-grow text-center md:text-left">
+                                <div class="flex items-center justify-center md:justify-start gap-3 mb-3">
+                                    <h3 class="text-2xl font-bold">Real-Time File Monitoring</h3>
+                                    <span
+                                        class="px-2 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-full">Utility
+                                        Tool</span>
+                                </div>
+                                <p class="text-gray-400 mb-6 leading-relaxed max-w-2xl">
+                                    Monitor directories for file changes in real-time. Detect suspicious activities like
+                                    ransomware patterns, bulk file modifications, and unauthorized access with instant
+                                    alerts.
+                                </p>
+
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-amber-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Real-Time Detection
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-amber-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Multi-Directory Watch
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-amber-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Threat Detection
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-amber-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Activity Logging
+                                    </div>
+                                </div>
+
+                                <a href="/file-monitoring"
+                                    class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 rounded-xl font-semibold hover:shadow-lg hover:shadow-amber-500/50 transition duration-300">
+                                    <span>Monitor Files</span>
+                                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Malware Scanner Card - Full Width -->
+            <div class="mb-16" data-aos="fade-up" data-aos-delay="300">
+                <div class="relative group card-hover">
+                    <div
+                        class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 border border-gray-700 h-full">
+                        <div class="flex flex-col md:flex-row items-center md:items-start gap-8">
+                            <div
+                                class="w-20 h-20 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center flex-shrink-0 feature-icon">
+                                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                    </path>
+                                </svg>
+                            </div>
+
+                            <div class="flex-grow text-center md:text-left">
+                                <div class="flex items-center justify-center md:justify-start gap-3 mb-3">
+                                    <h3 class="text-2xl font-bold">VirusTotal Malware Scanner</h3>
+                                    <span
+                                        class="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-medium rounded-full">70+
+                                        Engines</span>
+                                </div>
+                                <p class="text-gray-400 mb-6 leading-relaxed max-w-2xl">
+                                    Scan files and URLs for malware, viruses, trojans, and other security threats using
+                                    VirusTotal's 70+ antivirus engines. Get instant results with detailed threat
+                                    analysis.
+                                </p>
+
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-red-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        File Scanning
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-red-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        URL Analysis
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-red-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        70+ AV Engines
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-300">
+                                        <svg class="w-5 h-5 text-red-400 mr-2 flex-shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Scan History
+                                    </div>
+                                </div>
+
+                                <a href="/malware-scanner"
+                                    class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 rounded-xl font-semibold hover:shadow-lg hover:shadow-red-500/50 transition duration-300">
+                                    <span>Scan for Malware</span>
+                                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section Divider -->
+
+
+
             <div class="flex items-center justify-center mb-12" data-aos="fade-up">
                 <div class="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent w-full max-w-md"></div>
                 <div class="px-6 flex-shrink-0">
@@ -458,8 +742,8 @@
                     <p class="text-sm text-gray-500">Advanced Data Loss Prevention</p>
                 </div>
                 <div class="text-center md:text-right">
-                    <p class="text-sm text-gray-500">© 2024 Purezza Technologies. All rights reserved.</p>
-                    <p class="text-xs text-gray-600 mt-1">Powered by AI & Machine Learning</p>
+                    <p class="text-sm text-gray-500">© 2025. All rights reserved.</p>
+                    <p class="text-xs text-gray-600 mt-1">Powered by Aegis DLP</p>
                 </div>
             </div>
         </div>
@@ -487,6 +771,11 @@
             });
         });
     </script>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
 
 </body>
 

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{ filename }} - Secure Viewer</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .watermark-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            background: repeating-linear-gradient(-30deg,
+                    transparent,
+                    transparent 100px,
+                    rgba(255, 0, 0, 0.03) 100px,
+                    rgba(255, 0, 0, 0.03) 200px);
+        }
+
+        .watermark-overlay::before {
+            content: "{{ watermark }}";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 48px;
+            color: rgba(255, 0, 0, 0.1);
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        #pdf-container {
+            position: relative;
+        }
+
+        .pdf-page {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .secure-badge {
+            position: fixed;
+            top: 70px;
+            right: 10px;
+            z-index: 1001;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gray-900" oncontextmenu="return false;">
+    <!-- Secure Badge -->
+    <div class="secure-badge flex items-center gap-2 px-4 py-2 bg-red-600/90 rounded-lg text-white text-sm">
+        <i class="fas fa-shield-halved"></i>
+        <span>View Only - No Download</span>
+    </div>
+
+    <!-- Header -->
+    <div class="bg-gray-800 py-4 px-6 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
+        <div class="flex items-center gap-3">
+            <a href="/file-encryption" class="text-gray-400 hover:text-white">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h1 class="text-white font-medium">{{ filename }}</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="zoomOut()" class="text-gray-400 hover:text-white px-3 py-1 bg-gray-700 rounded">
+                <i class="fas fa-minus"></i>
+            </button>
+            <span id="zoomLevel" class="text-white">100%</span>
+            <button onclick="zoomIn()" class="text-gray-400 hover:text-white px-3 py-1 bg-gray-700 rounded">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- PDF Container -->
+    <div id="pdf-container" class="pt-20 pb-8 px-8 flex flex-col items-center">
+        <div class="text-white text-center py-20">
+            <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Loading PDF...</p>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let currentScale = 1.0;
+        const pdfData = atob('{{ pdf_data }}');
+        let pdfDoc = null;
+
+        async function renderPDF() {
+            const container = document.getElementById('pdf-container');
+            container.innerHTML = '';
+
+            const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+            pdfDoc = await loadingTask.promise;
+
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: currentScale });
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'pdf-page';
+                wrapper.style.position = 'relative';
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                wrapper.appendChild(canvas);
+
+                // Add watermark overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'watermark-overlay';
+                wrapper.appendChild(overlay);
+
+                container.appendChild(wrapper);
+
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+            }
+        }
+
+        function zoomIn() {
+            if (currentScale < 2.0) {
+                currentScale += 0.25;
+                document.getElementById('zoomLevel').textContent = Math.round(currentScale * 100) + '%';
+                renderPDF();
+            }
+        }
+
+        function zoomOut() {
+            if (currentScale > 0.5) {
+                currentScale -= 0.25;
+                document.getElementById('zoomLevel').textContent = Math.round(currentScale * 100) + '%';
+                renderPDF();
+            }
+        }
+
+        renderPDF();
+
+        // Disable shortcuts
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
+</body>
+
+</html>

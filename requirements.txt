@@ -32,3 +32,16 @@ langdetect
 tldextract
 tensorflow
 
+# File Encryption Dependencies
+cryptography
+qrcode
+
+# AI Chatbot Dependencies
+groq
+chromadb
+sentence-transformers
+duckduckgo-search
+httpx
+
+# File Monitoring Dependencies
+watchdog
