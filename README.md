@@ -1076,7 +1076,7 @@ A comprehensive security audit was conducted by an independent cybersecurity exp
 - B.Tech AI & ML Student (2nd Year)
 - GitHub: [@AyushGupta1332](https://github.com/AyushGupta1332)
 - LinkedIn: [Ayush Raj](https://www.linkedin.com/in/ayush-raj-144b2325a/)
-- Portfolio: [Ayush Raj]([https://www.linkedin.com/in/ayush-raj-144b2325a/](https://ayushgupta1332.github.io/Portfolio/))
+- Portfolio: [Ayush](https://ayushgupta1332.github.io/Portfolio/)
 
 ---
 
