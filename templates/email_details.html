@@ -70,7 +70,7 @@
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{{ url_for('phishing_dashboard') }}"
+                    <a href="{{ url_for('phishing.phishing_dashboard') }}"
                         class="px-4 py-2 text-gray-300 hover:text-white transition-colors duration-200 flex items-center space-x-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -244,7 +244,7 @@
                         {% endif %}
 
                         <!-- Download Button -->
-                        <a href="{{ url_for('download_attachment', attachment_id=attachment.id) }}"
+                        <a href="{{ url_for('phishing.download_attachment', attachment_id=attachment.id) }}"
                             class="p-2 bg-blue-600/20 hover:bg-blue-600/40 rounded-lg text-blue-400 transition-colors"
                             title="Download">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -288,7 +288,7 @@
             <h2 class="text-xl font-bold mb-6">Provide Feedback</h2>
             <p class="text-gray-400 mb-6">Help improve our detection by providing feedback on this classification.</p>
 
-            <form action="{{ url_for('submit_phishing_feedback', email_id=email.id) }}" method="POST">
+            <form action="{{ url_for('phishing.submit_phishing_feedback', email_id=email.id) }}" method="POST">
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Correct Classification</label>
                     <div class="flex space-x-4">
@@ -588,6 +588,7 @@
     </script>
 
     <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
 
 </body>
 

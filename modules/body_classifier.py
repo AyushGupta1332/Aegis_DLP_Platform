@@ -50,12 +50,20 @@ def _init_model():
     )
 
     # Base model + LoRA wrapper
-    base_model = AutoModelForSequenceClassification.from_pretrained(
-        MODEL_NAME,
-        num_labels=2,
-        id2label=ID2LABEL,
-        label2id=LABEL2ID,
-    )
+    # Suppress safetensors LOAD REPORT (UNEXPECTED/MISSING keys are expected
+    # when loading a base LM checkpoint for sequence classification + LoRA)
+    import io, sys as _sys
+    _old_stdout = _sys.stdout
+    _sys.stdout = io.StringIO()
+    try:
+        base_model = AutoModelForSequenceClassification.from_pretrained(
+            MODEL_NAME,
+            num_labels=2,
+            id2label=ID2LABEL,
+            label2id=LABEL2ID,
+        )
+    finally:
+        _sys.stdout = _old_stdout
     model = get_peft_model(base_model, lora_config)
 
     # Load LoRA weights (state_dict should match exactly what was saved during training)

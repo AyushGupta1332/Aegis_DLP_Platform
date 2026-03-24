@@ -35,6 +35,127 @@ warnings.filterwarnings("ignore")
 os.environ['TRANSFORMERS_VERBOSITY'] = 'error'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
+# ---- PII Regex Pre-Pass (runs BEFORE transformer inference) ----
+import re as _re
+
+PII_PATTERNS = {
+    # ── Global / US Patterns ──────────────────────────────────────
+    'ssn':          _re.compile(r'\b\d{3}-\d{2}-\d{4}\b'),
+    'credit_card':  _re.compile(
+        r'\b(?:4[0-9]{12}(?:[0-9]{3})?'     # Visa
+        r'|5[1-5][0-9]{14}'                  # MasterCard
+        r'|3[47][0-9]{13}'                   # Amex
+        r'|6(?:011|5[0-9]{2})[0-9]{12}'      # Discover
+        r'|(?:6521|6522)[0-9]{12}'           # RuPay (India)
+        r')\b'),
+    'iban':         _re.compile(r'\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b'),
+    'phone_us':     _re.compile(r'\b(?:\+1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b'),
+    'email_addr':   _re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
+
+    # ── Indian Government IDs ─────────────────────────────────────
+    # Aadhaar — 12 digits, usually formatted as 4-4-4 or plain
+    # First digit is 2-9 (never 0 or 1 per UIDAI spec)
+    'aadhaar':      _re.compile(
+        r'\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b'),
+
+    # PAN Card — 5 uppercase + 4 digits + 1 uppercase (e.g., ABCDE1234F)
+    # 4th char indicates holder type: C=Company, P=Person, H=HUF, etc.
+    'pan_card':     _re.compile(
+        r'\b[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]\b'),
+
+    # Indian Passport — One uppercase letter + 7 digits (e.g., J8369854)
+    # First letter: A-Z (series varies by passport office)
+    'passport_in':  _re.compile(
+        r'\b[A-PR-WY][0-9]{7}\b'),
+
+    # Voter ID (EPIC) — 3 uppercase letters + 7 digits (e.g., ABC1234567)
+    'voter_id':     _re.compile(
+        r'\b[A-Z]{3}\d{7}\b'),
+
+    # Driving License — State code (2 chars) + optional dash + 2-digit RTO
+    #   + optional dash + year (2 or 4 digits) + 7 digits
+    # e.g., DL-0420110012345, MH1220190001234, KA0120201234567
+    'driving_license_in': _re.compile(
+        r'\b[A-Z]{2}[\s-]?\d{2}[\s-]?(?:19|20)\d{2}[\s-]?\d{7}\b'),
+
+    # GSTIN — 15-char alphanumeric GST Identification Number
+    # Format: 2-digit state code + PAN (10 chars) + 1 entity + Z + checksum
+    'gstin':        _re.compile(
+        r'\b\d{2}[A-Z]{5}\d{4}[A-Z]\dZ[A-Z0-9]\b'),
+
+    # Indian Phone Number — +91 / 0 prefix + 10 digits (mobile starts with 6-9)
+    'phone_in':     _re.compile(
+        r'\b(?:\+91[\s.-]?|0)?[6-9]\d{4}[\s.-]?\d{5}\b'),
+
+    # ── Indian Financial ──────────────────────────────────────────
+    # UPI ID — e.g., name@upi, name@paytm, name@ybl
+    'upi_id':       _re.compile(
+        r'\b[A-Za-z0-9._-]+@[A-Za-z]{2,}\b'),
+
+    # IFSC Code — 4 letter bank code + 0 + 6 alphanumeric (e.g., SBIN0001234)
+    'ifsc_code':    _re.compile(
+        r'\b[A-Z]{4}0[A-Z0-9]{6}\b'),
+
+    # Indian Bank Account Number — 9 to 18 digits (most banks)
+    'bank_account_in': _re.compile(
+        r'\b\d{9,18}\b'),  # broad — weighted lower in scoring
+}
+
+# Patterns that are highly specific — a single match means PII is present
+# Three-band confidence thresholds
+CONFIDENCE_HIGH = 0.75   # Auto-classify (high confidence)
+CONFIDENCE_LOW  = 0.40   # Auto-classify as non-sensitive
+# Between LOW and HIGH → flag for human review
+
+# Patterns that are highly specific — a single match means PII is present
+_HIGH_CONFIDENCE_PATTERNS = {
+    'aadhaar', 'pan_card', 'ssn', 'credit_card', 'gstin',
+    'driving_license_in', 'passport_in', 'voter_id', 'iban',
+}
+
+# Broad patterns that can false-positive on random numbers/text.
+# These only count when at least 2 other PII types are also found.
+_LOW_CONFIDENCE_PATTERNS = {
+    'bank_account_in', 'upi_id',
+}
+
+def pii_pre_scan(text: str) -> dict:
+    """Scan text for PII patterns with tiered confidence.
+    
+    High-confidence patterns (Aadhaar, PAN, SSN, credit card, etc.)
+    trigger instant classification.  Broad patterns (bank account
+    numbers, UPI IDs) are only included when ≥2 other PII types are
+    already found — this avoids false positives from random digit
+    sequences.
+    
+    Returns dict of pattern_name -> match_count (only confirmed hits).
+    """
+    if not text:
+        return {}
+    
+    sample = text[:50000]  # cap scan length
+    raw_hits = {}
+    for name, pattern in PII_PATTERNS.items():
+        matches = pattern.findall(sample)
+        if matches:
+            raw_hits[name] = len(matches)
+    
+    # Separate into high-confidence and low-confidence buckets
+    confirmed = {k: v for k, v in raw_hits.items() if k in _HIGH_CONFIDENCE_PATTERNS}
+    tentative = {k: v for k, v in raw_hits.items()
+                 if k in _LOW_CONFIDENCE_PATTERNS}
+    
+    # Medium-confidence patterns (phone, email, IFSC) — always included
+    medium = {k: v for k, v in raw_hits.items()
+              if k not in _HIGH_CONFIDENCE_PATTERNS and k not in _LOW_CONFIDENCE_PATTERNS}
+    confirmed.update(medium)
+    
+    # Only promote low-confidence hits when ≥2 other distinct PII types found
+    if len(confirmed) >= 2 and tentative:
+        confirmed.update(tentative)
+    
+    return confirmed
+
 class DataClassifier:
     def __init__(self, model_path):
         """Initialize the RoBERTa classification model"""
@@ -52,7 +173,15 @@ class DataClassifier:
             print("[DataClassifier] Loading RoBERTa tokenizer...")
             self.tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
             print("[DataClassifier] Loading RoBERTa base model...")
-            base_model = RobertaForSequenceClassification.from_pretrained("roberta-base", num_labels=2)
+            # Suppress safetensors LOAD REPORT (UNEXPECTED/MISSING keys are expected
+            # when loading a base LM checkpoint for sequence classification + LoRA)
+            import io, sys
+            _old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            try:
+                base_model = RobertaForSequenceClassification.from_pretrained("roberta-base", num_labels=2)
+            finally:
+                sys.stdout = _old_stdout
             
             print("[DataClassifier] Configuring LoRA...")
             lora_config = LoraConfig(
@@ -284,7 +413,7 @@ class DataClassifier:
             return 0, 0.5
     
     def classify_file(self, file_path, progress_callback=None):
-        """Classify a single file"""
+        """Classify a single file with PII pre-scan and confidence banding."""
         try:
             file_path = Path(file_path)
             
@@ -300,8 +429,36 @@ class DataClassifier:
                     'error': 'No text could be extracted'
                 }
             
-            # Classify
+            # ---- PII Regex Pre-Pass (fast, runs before transformer) ----
+            pii_hits = pii_pre_scan(text)
+            if pii_hits:
+                result = {
+                    'filename': file_path.name,
+                    'path': str(file_path),
+                    'classification': 'Sensitive',
+                    'confidence': 100.0,
+                    'file_size': file_path.stat().st_size,
+                    'file_type': file_path.suffix,
+                    'pii_detected': pii_hits,
+                    'needs_review': False,
+                    'confidence_band': 'high',
+                }
+                if progress_callback:
+                    progress_callback(result)
+                return result
+            
+            # ---- Transformer Classification ----
             pred, conf = self.classify_with_majority_voting(text, token_threshold=500)
+            
+            # ---- Three-Band Confidence Enforcement ----
+            needs_review = False
+            if conf >= CONFIDENCE_HIGH:
+                confidence_band = 'high'
+            elif conf >= CONFIDENCE_LOW:
+                confidence_band = 'medium'
+                needs_review = True  # Human should verify
+            else:
+                confidence_band = 'low'
             
             result = {
                 'filename': file_path.name,
@@ -309,7 +466,9 @@ class DataClassifier:
                 'classification': 'Sensitive' if pred == 1 else 'Non-Sensitive',
                 'confidence': float(conf * 100),
                 'file_size': file_path.stat().st_size,
-                'file_type': file_path.suffix
+                'file_type': file_path.suffix,
+                'needs_review': needs_review,
+                'confidence_band': confidence_band,
             }
             
             if progress_callback:

@@ -25,11 +25,18 @@ memory_collection = None
 if CHROMADB_AVAILABLE:
     try:
         chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-        embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=EMBEDDING_MODEL
-        )
+        # Suppress BertModel LOAD REPORT (UNEXPECTED embeddings.position_ids is benign)
+        import io, sys as _sys
+        _old_stdout = _sys.stdout
+        _sys.stdout = io.StringIO()
+        try:
+            embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=EMBEDDING_MODEL
+            )
+        finally:
+            _sys.stdout = _old_stdout
         memory_collection = chroma_client.get_or_create_collection(
-            name="sentinelx_memory",
+            name="aegis_dlp_memory",
             embedding_function=embedding_function,
             metadata={"hnsw:space": "cosine"}
         )
@@ -127,7 +134,7 @@ if CHROMADB_AVAILABLE and chroma_client:
             model_name=EMBEDDING_MODEL
         )
         activity_collection = chroma_client.get_or_create_collection(
-            name="sentinelx_activities",
+            name="aegis_dlp_activities",
             embedding_function=embedding_function,
             metadata={"hnsw:space": "cosine"}
         )

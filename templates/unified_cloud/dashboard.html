@@ -1,0 +1,189 @@
+{% extends "unified_base.html" %}
+
+{% block title %}Cloud Dashboard - FileGuard{% endblock %}
+
+{% block body %}
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <div class="flex items-center space-x-6">
+                <a href="/unified-monitoring" class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-cloud-500 to-cloud-600 flex items-center justify-center">
+                        <i data-lucide="cloud" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="text-xl font-bold text-cloud-400">Cloud System</span>
+                </a>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_dashboard') }}"
+                        class="px-4 py-2 rounded-lg bg-cloud-500/10 text-cloud-400 font-medium">Dashboard</a>
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_admin') }}"
+                        class="px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors">Admin</a>
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_files') }}"
+                        class="px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors">My
+                        Files</a>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                {% if user %}
+                <div class="flex items-center gap-3">
+                    {% if user.picture %}
+                    <img src="{{ user.picture }}" alt="{{ user.name }}" class="w-8 h-8 rounded-full">
+                    {% else %}
+                    <div class="w-8 h-8 rounded-full bg-cloud-500/20 flex items-center justify-center">
+                        <i data-lucide="user" class="w-4 h-4 text-cloud-400"></i>
+                    </div>
+                    {% endif %}
+                    <span class="hidden md:inline text-sm text-dark-300">{{ user.name }}</span>
+                </div>
+                {% endif %}
+                <a href="{{ url_for('unified_monitoring.unified_cloud_logout') }}"
+                    class="px-4 py-2 text-dark-400 hover:text-white transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="pt-24 pb-12 px-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Welcome Section -->
+        <div class="mb-8 animate-slide-up">
+            <h1 class="text-3xl font-bold text-white mb-2">
+                Welcome back, <span class="text-cloud-400">{{ user.name if user else 'User' }}</span>
+            </h1>
+            <p class="text-dark-400">Manage your Google Drive files and user permissions</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div
+            class="mb-6 p-4 rounded-xl animate-slide-down {% if category == 'error' %}bg-red-500/10 border border-red-500/20 text-red-400{% elif category == 'success' %}bg-green-500/10 border border-green-500/20 text-green-400{% else %}bg-yellow-500/10 border border-yellow-500/20 text-yellow-400{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fade-in">
+            <div class="glass rounded-2xl p-6 border border-cloud-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-cloud-500/20 flex items-center justify-center">
+                        <i data-lucide="files" class="w-6 h-6 text-cloud-400"></i>
+                    </div>
+                    <span class="text-xs font-medium text-cloud-400 bg-cloud-500/10 px-2 py-1 rounded-full">Google
+                        Drive</span>
+                </div>
+                <div class="text-3xl font-bold text-white mb-1">{{ total_files }}</div>
+                <div class="text-dark-400 text-sm">Total Files</div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 border border-primary-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                        <i data-lucide="users" class="w-6 h-6 text-primary-400"></i>
+                    </div>
+                    <span
+                        class="text-xs font-medium text-primary-400 bg-primary-500/10 px-2 py-1 rounded-full">Active</span>
+                </div>
+                <div class="text-3xl font-bold text-white mb-1">{{ total_users }}</div>
+                <div class="text-dark-400 text-sm">Registered Users</div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 border border-green-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                        <i data-lucide="check-circle" class="w-6 h-6 text-green-400"></i>
+                    </div>
+                    <span
+                        class="text-xs font-medium text-green-400 bg-green-500/10 px-2 py-1 rounded-full">Connected</span>
+                </div>
+                <div class="text-3xl font-bold text-white mb-1">Active</div>
+                <div class="text-dark-400 text-sm">Google Drive Status</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+            <a href="{{ url_for('unified_monitoring.unified_cloud_admin') }}"
+                class="glass rounded-2xl p-6 border border-white/10 card-hover group">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cloud-500 to-cloud-600 flex items-center justify-center shadow-lg shadow-cloud-500/20">
+                        <i data-lucide="settings" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-white group-hover:text-cloud-400 transition-colors">Admin
+                            Panel</h3>
+                        <p class="text-dark-400 text-sm">Manage users and file permissions</p>
+                    </div>
+                    <i data-lucide="chevron-right"
+                        class="w-5 h-5 text-dark-500 ml-auto group-hover:translate-x-1 transition-transform"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('unified_monitoring.unified_cloud_files') }}"
+                class="glass rounded-2xl p-6 border border-white/10 card-hover group">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                        <i data-lucide="folder-open" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-white group-hover:text-primary-400 transition-colors">My
+                            Files</h3>
+                        <p class="text-dark-400 text-sm">Access your assigned files</p>
+                    </div>
+                    <i data-lucide="chevron-right"
+                        class="w-5 h-5 text-dark-500 ml-auto group-hover:translate-x-1 transition-transform"></i>
+                </div>
+            </a>
+        </div>
+
+        <!-- System Info -->
+        <div class="mt-8 glass rounded-2xl p-6 animate-fade-in">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="info" class="w-5 h-5 text-cloud-400"></i>
+                System Information
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-dark-800/50 rounded-xl p-4">
+                    <div class="text-dark-400 text-xs uppercase tracking-wider mb-1">Logged In As</div>
+                    <div class="text-white text-sm font-medium truncate">{{ user.email if user else 'N/A' }}</div>
+                </div>
+                <div class="bg-dark-800/50 rounded-xl p-4">
+                    <div class="text-dark-400 text-xs uppercase tracking-wider mb-1">Storage</div>
+                    <div class="text-white text-sm font-medium">Google Drive</div>
+                </div>
+                <div class="bg-dark-800/50 rounded-xl p-4">
+                    <div class="text-dark-400 text-xs uppercase tracking-wider mb-1">Auth Method</div>
+                    <div class="text-white text-sm font-medium">OAuth 2.0</div>
+                </div>
+                <div class="bg-dark-800/50 rounded-xl p-4">
+                    <div class="text-dark-400 text-xs uppercase tracking-wider mb-1">Status</div>
+                    <div class="text-green-400 text-sm font-medium flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        Connected
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Back to Home -->
+        <div class="mt-8 text-center">
+            <a href="/unified-monitoring" class="inline-flex items-center gap-2 text-dark-400 hover:text-white transition-colors">
+                <i data-lucide="home" class="w-4 h-4"></i>
+                Back to Main Dashboard
+            </a>
+        </div>
+    </div>
+</main>
+{% endblock %}
+

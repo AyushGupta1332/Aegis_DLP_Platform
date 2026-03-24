@@ -45,3 +45,8 @@ httpx
 
 # File Monitoring Dependencies
 watchdog
+psutil
+
+# Unified Device Monitoring Dependencies
+flask-sqlalchemy
+python-dotenv

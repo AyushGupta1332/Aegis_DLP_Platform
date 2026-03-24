@@ -1,0 +1,165 @@
+{% extends "unified_base.html" %}
+
+{% block title %}Local Login - FileGuard{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center px-4 py-12">
+    <!-- Background effects -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-local-500/20 rounded-full blur-3xl animate-pulse-slow"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary-500/15 rounded-full blur-3xl animate-pulse-slow"
+            style="animation-delay: 1s;"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-md">
+        <!-- Back to home -->
+        <a href="/unified-monitoring"
+            class="inline-flex items-center gap-2 text-dark-400 hover:text-white transition-colors mb-8">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Back to Home
+        </a>
+
+        <!-- Login Card -->
+        <div class="glass rounded-3xl p-8 border border-local-500/20 glow-local animate-scale-in">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <div
+                    class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-local-500 to-local-600 flex items-center justify-center shadow-lg shadow-local-500/30 mb-4">
+                    <i data-lucide="hard-drive" class="w-8 h-8 text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white mb-2">Local Monitoring</h1>
+                <p class="text-dark-400">USB Device Control System</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div
+                class="mb-6 p-4 rounded-xl {% if category == 'error' %}bg-red-500/10 border border-red-500/20 text-red-400{% elif category == 'success' %}bg-green-500/10 border border-green-500/20 text-green-400{% else %}bg-yellow-500/10 border border-yellow-500/20 text-yellow-400{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <!-- Error Message Container -->
+            <div id="errorMessage"
+                class="hidden mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400"></div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">Username</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i data-lucide="user" class="w-5 h-5 text-dark-500"></i>
+                        </div>
+                        <input type="text" id="username" name="username" required
+                            class="w-full pl-12 pr-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-local-500 focus:ring-1 focus:ring-local-500 transition-all"
+                            placeholder="Enter username">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i data-lucide="lock" class="w-5 h-5 text-dark-500"></i>
+                        </div>
+                        <input type="password" id="password" name="password" required
+                            class="w-full pl-12 pr-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-local-500 focus:ring-1 focus:ring-local-500 transition-all"
+                            placeholder="Enter password">
+                    </div>
+                </div>
+
+                <button type="submit" id="loginBtn"
+                    class="w-full py-4 bg-gradient-to-r from-local-600 to-local-500 hover:from-local-500 hover:to-local-400 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:shadow-local-500/25 flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-5 h-5"></i>
+                    <span>Sign In</span>
+                </button>
+            </form>
+
+            <!-- MAC Address Info -->
+            <div class="mt-6 p-4 bg-dark-800/50 rounded-xl border border-dark-700">
+                <div class="flex items-center gap-3 text-sm">
+                    <i data-lucide="cpu" class="w-5 h-5 text-local-400"></i>
+                    <span class="text-dark-400">MAC address authentication enabled</span>
+                </div>
+            </div>
+
+            <!-- Default Credentials -->
+            <div class="mt-6 pt-6 border-t border-white/10">
+                <p class="text-dark-500 text-sm text-center mb-3">Default SuperAdmin Credentials</p>
+                <div class="flex justify-center gap-4 text-sm">
+                    <code class="px-3 py-1 bg-dark-800 rounded-lg text-dark-300">superadmin</code>
+                    <code class="px-3 py-1 bg-dark-800 rounded-lg text-dark-300">admin123</code>
+                </div>
+            </div>
+
+            <!-- Features List -->
+            <div class="mt-8 pt-6 border-t border-white/10">
+                <h3 class="text-sm font-semibold text-dark-400 uppercase tracking-wider mb-4">Features</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3 text-sm text-dark-300">
+                        <i data-lucide="usb" class="w-4 h-4 text-local-500"></i>
+                        USB device detection & registration
+                    </div>
+                    <div class="flex items-center gap-3 text-sm text-dark-300">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-local-500"></i>
+                        Controlled file transfers
+                    </div>
+                    <div class="flex items-center gap-3 text-sm text-dark-300">
+                        <i data-lucide="users" class="w-4 h-4 text-local-500"></i>
+                        Role-based access control
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('loginBtn');
+        const errorDiv = document.getElementById('errorMessage');
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        // Disable button
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><span>Signing in...</span>';
+        errorDiv.classList.add('hidden');
+
+        try {
+            const response = await fetch('/unified-monitoring/local/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = '/unified-monitoring/local/dashboard';
+            } else {
+                errorDiv.textContent = data.error || 'Login failed';
+                errorDiv.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="log-in" class="w-5 h-5"></i><span>Sign In</span>';
+                lucide.createIcons();
+            }
+        } catch (error) {
+            errorDiv.textContent = 'Connection error. Please try again.';
+            errorDiv.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="log-in" class="w-5 h-5"></i><span>Sign In</span>';
+            lucide.createIcons();
+        }
+    });
+</script>
+{% endblock %}

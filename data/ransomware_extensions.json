@@ -1,0 +1,31 @@
+{
+  "_description": "Ransomware file extension blocklist. Update this file to add new extensions without modifying code.",
+  "_updated": "2026-03-22",
+  "extensions": [
+    ".encrypted", ".locked", ".crypto", ".crypt", ".enc", ".crypted",
+    ".locky", ".cerber", ".zepto", ".odin", ".thor", ".zzzzz",
+    ".aaa", ".abc", ".xyz", ".micro", ".vvv", ".ccc", ".ecc",
+    ".exx", ".ezz", ".xxx", ".ttt", ".rrr", ".darkness",
+    ".wannacry", ".wncry", ".wcry", ".wncryt",
+    ".dharma", ".arena", ".java", ".bip",
+    ".ryuk", ".RYK",
+    ".maze", ".maz",
+    ".conti",
+    ".lockbit", ".abcd",
+    ".hive",
+    ".blackcat", ".alphv",
+    ".deadbolt",
+    ".play",
+    ".royal",
+    ".clop", ".ciop",
+    ".phobos", ".eking", ".eight",
+    ".sodinokibi", ".revil",
+    ".avaddon",
+    ".ragnarok",
+    ".netwalker",
+    ".pysa",
+    ".zeppelin",
+    ".makop",
+    ".stop", ".djvu", ".neer", ".lqqw", ".jjww"
+  ]
+}

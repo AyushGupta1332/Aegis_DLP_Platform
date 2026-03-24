@@ -71,6 +71,12 @@
         <div class="container mx-auto px-6 py-4">
             <div class="flex items-center justify-between flex-wrap gap-4">
                 <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-400 hover:text-white transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                    </a>
                     <div class="bg-blue-600 p-3 rounded-lg">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -289,7 +295,7 @@
 
     <script>
         // Socket.IO connection
-        const socket = io('http://localhost:5000');
+        const socket = io();
 
         let monitoringActive = false;
         let predictionCount = 0;
@@ -424,7 +430,7 @@
         // Start monitoring
         startBtn.addEventListener('click', async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/start', {
+                const response = await fetch('/api/start', {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -445,7 +451,7 @@
         // Stop monitoring
         stopBtn.addEventListener('click', async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/stop', {
+                const response = await fetch('/api/stop', {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -617,7 +623,7 @@
         // Load initial stats on page load
         async function loadInitialStats() {
             try {
-                const response = await fetch('http://localhost:5000/api/stats');
+                const response = await fetch('/api/stats');
                 const stats = await response.json();
                 updateStats(stats);
             } catch (error) {
@@ -663,6 +669,7 @@
     </script>
 
     <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
 </body>
 
 </html>

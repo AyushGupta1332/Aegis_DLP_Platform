@@ -1,0 +1,506 @@
+{% extends "unified_base.html" %}
+
+{% block title %}Cloud Admin - FileGuard{% endblock %}
+
+{% block body %}
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <div class="flex items-center space-x-6">
+                <a href="/unified-monitoring" class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-cloud-500 to-cloud-600 flex items-center justify-center">
+                        <i data-lucide="cloud" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="text-xl font-bold text-cloud-400">Cloud System</span>
+                </a>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_dashboard') }}"
+                        class="px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors">Dashboard</a>
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_admin') }}"
+                        class="px-4 py-2 rounded-lg bg-cloud-500/10 text-cloud-400 font-medium">Admin</a>
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_files') }}"
+                        class="px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors">My
+                        Files</a>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                {% if user %}
+                <div class="flex items-center gap-3">
+                    {% if user.picture %}
+                    <img src="{{ user.picture }}" alt="{{ user.name }}" class="w-8 h-8 rounded-full">
+                    {% else %}
+                    <div class="w-8 h-8 rounded-full bg-cloud-500/20 flex items-center justify-center">
+                        <i data-lucide="user" class="w-4 h-4 text-cloud-400"></i>
+                    </div>
+                    {% endif %}
+                    <span class="hidden md:inline text-sm text-dark-300">{{ user.name }}</span>
+                </div>
+                {% endif %}
+                <a href="{{ url_for('unified_monitoring.unified_cloud_logout') }}"
+                    class="px-4 py-2 text-dark-400 hover:text-white transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="pt-24 pb-12 px-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8 animate-slide-up">
+            <h1 class="text-3xl font-bold text-white mb-2">Admin Panel</h1>
+            <p class="text-dark-400">Manage users, permissions, and files</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div
+            class="mb-6 p-4 rounded-xl animate-slide-down {% if category == 'error' %}bg-red-500/10 border border-red-500/20 text-red-400{% elif category == 'success' %}bg-green-500/10 border border-green-500/20 text-green-400{% else %}bg-yellow-500/10 border border-yellow-500/20 text-yellow-400{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="grid lg:grid-cols-2 gap-8">
+            <!-- Upload File Section -->
+            <div class="glass rounded-2xl p-6 border border-cloud-500/20 animate-fade-in">
+                <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="upload" class="w-5 h-5 text-cloud-400"></i>
+                    Upload to Google Drive
+                </h2>
+
+                <form action="{{ url_for('unified_monitoring.unified_cloud_upload') }}" method="POST" enctype="multipart/form-data">
+                    <div class="border-2 border-dashed border-dark-600 rounded-xl p-8 text-center hover:border-cloud-500/50 transition-colors"
+                        id="dropzone">
+                        <i data-lucide="cloud-upload" class="w-12 h-12 text-dark-500 mx-auto mb-4"></i>
+                        <p class="text-dark-400 mb-2">Drag & drop file here or</p>
+                        <label class="cursor-pointer">
+                            <span
+                                class="px-4 py-2 bg-cloud-600 hover:bg-cloud-700 text-white rounded-lg font-medium transition-colors inline-block">
+                                Browse Files
+                            </span>
+                            <input type="file" name="file" class="hidden" id="fileInput" required>
+                        </label>
+                        <p class="text-dark-500 text-sm mt-3" id="fileName">No file selected</p>
+                    </div>
+                    <button type="submit"
+                        class="w-full mt-4 px-6 py-3 bg-cloud-600 hover:bg-cloud-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="upload" class="w-5 h-5"></i>
+                        Upload to Drive
+                    </button>
+                </form>
+            </div>
+
+            <!-- Add User Section -->
+            <div class="glass rounded-2xl p-6 border border-primary-500/20 animate-fade-in">
+                <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-5 h-5 text-primary-400"></i>
+                    Add New User
+                </h2>
+
+                <form action="{{ url_for('unified_monitoring.unified_cloud_add_user') }}" method="POST">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-dark-300 mb-2">Name</label>
+                            <input type="text" name="name" required
+                                class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                                placeholder="Username">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-dark-300 mb-2">Email</label>
+                            <input type="email" name="email" required
+                                class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                                placeholder="Email">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-dark-300 mb-2">IP Address (Optional)</label>
+                            <input type="text" name="ip_address"
+                                class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                                placeholder="Auto-detect if empty">
+                        </div>
+
+                        <!-- File Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-dark-300 mb-2">Assign Files</label>
+                            <div
+                                class="max-h-40 overflow-y-auto bg-dark-800/50 border border-dark-700 rounded-xl p-3 space-y-2">
+                                {% if all_files %}
+                                {% for file in all_files %}
+                                <label
+                                    class="flex items-center gap-3 p-2 hover:bg-dark-700/50 rounded-lg cursor-pointer">
+                                    <input type="checkbox" name="google_files" value="{{ file.id }}"
+                                        class="w-4 h-4 rounded border-dark-600 bg-dark-800 text-cloud-500 focus:ring-cloud-500">
+                                    <span class="text-sm text-dark-300 truncate">{{ file.name }}</span>
+                                </label>
+                                {% endfor %}
+                                {% else %}
+                                <p class="text-dark-500 text-sm text-center py-4">No files available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full mt-4 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="user-plus" class="w-5 h-5"></i>
+                        Add User
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Google Drive Files -->
+        <div class="mt-8 glass rounded-2xl p-6 animate-fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="files" class="w-5 h-5 text-cloud-400"></i>
+                        Google Drive Files
+                    </h2>
+                    <span class="px-3 py-1 bg-cloud-500/10 text-cloud-400 text-xs rounded-full">
+                        {{ total_files }} total
+                    </span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" name="search" id="searchInput" value="{{ search_query }}"
+                        class="px-4 py-2 bg-dark-800/50 border border-dark-700 rounded-lg text-white text-sm placeholder-dark-500 focus:border-cloud-500 focus:ring-1 focus:ring-cloud-500 transition-all"
+                        placeholder="Search files..."
+                        onkeypress="if(event.key==='Enter'){event.preventDefault();searchFiles();}">
+                    <button type="button" onclick="searchFiles()"
+                        class="px-4 py-2 bg-cloud-600 hover:bg-cloud-700 text-white rounded-lg transition-colors">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left border-b border-dark-700">
+                            <th class="pb-3 text-dark-400 text-sm font-medium">#</th>
+                            <th class="pb-3 text-dark-400 text-sm font-medium">File Name</th>
+                            <th class="pb-3 text-dark-400 text-sm font-medium">Type</th>
+                            <th class="pb-3 text-dark-400 text-sm font-medium">Modified</th>
+                            <th class="pb-3 text-dark-400 text-sm font-medium">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-700/50">
+                        {% if google_files %}
+                        {% for file in google_files %}
+                        <tr class="hover:bg-dark-800/30">
+                            <td class="py-3 text-dark-500 text-sm">{{ (page - 1) * per_page + loop.index }}</td>
+                            <td class="py-3 text-white">{{ file.name }}</td>
+                            <td class="py-3 text-dark-400 text-sm">{{ file.mimeType.split('.')[-1] if file.mimeType else
+                                'Unknown' }}</td>
+                            <td class="py-3 text-dark-400 text-sm">{{ file.modifiedTime[:10] if file.modifiedTime else
+                                'N/A' }}</td>
+                            <td class="py-3 text-dark-400 text-sm">{{ (file.size | int / 1024) | round(1) if file.size
+                                else 0 }} KB</td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-dark-500">No files found</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            {% if total_pages > 1 %}
+            <div
+                class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-dark-700">
+                <!-- Page Info -->
+                <div class="text-sm text-dark-400">
+                    Showing <span class="text-white font-medium">{{ (page - 1) * per_page + 1 }}</span>
+                    to <span class="text-white font-medium">{{ [page * per_page, total_files] | min }}</span>
+                    of <span class="text-white font-medium">{{ total_files }}</span> files
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Items Per Page -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-dark-400">Show:</label>
+                        <select name="per_page" onchange="changePerPage()"
+                            class="px-3 py-1.5 bg-dark-800/50 border border-dark-700 rounded-lg text-white text-sm focus:border-cloud-500 focus:ring-1 focus:ring-cloud-500">
+                            <option value="5" {% if per_page==5 %}selected{% endif %}>5</option>
+                            <option value="10" {% if per_page==10 %}selected{% endif %}>10</option>
+                            <option value="25" {% if per_page==25 %}selected{% endif %}>25</option>
+                            <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+                        </select>
+                    </div>
+
+                    <!-- Page Navigation (JavaScript-powered) -->
+                    <div class="flex items-center gap-1">
+                        <!-- First Page -->
+                        <button type="button" onclick="goToPage(1)"
+                            class="px-3 py-1.5 rounded-lg text-sm {% if page == 1 %}bg-dark-700/50 text-dark-500 cursor-not-allowed{% else %}bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400{% endif %} transition-colors"
+                            {% if page==1 %}disabled{% endif %}>
+                            <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+                        </button>
+
+                        <!-- Previous Page -->
+                        <button type="button" onclick="goToPage({{ page - 1 }})"
+                            class="px-3 py-1.5 rounded-lg text-sm {% if page == 1 %}bg-dark-700/50 text-dark-500 cursor-not-allowed{% else %}bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400{% endif %} transition-colors"
+                            {% if page==1 %}disabled{% endif %}>
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+
+                        <!-- Page Numbers -->
+                        {% set start_page = [1, page - 2] | max %}
+                        {% set end_page = [total_pages, page + 2] | min %}
+
+                        {% if start_page > 1 %}
+                        <span class="px-2 py-1.5 text-dark-500 text-sm">...</span>
+                        {% endif %}
+
+                        {% for p in range(start_page, end_page + 1) %}
+                        <button type="button" onclick="goToPage({{ p }})"
+                            class="px-3 py-1.5 rounded-lg text-sm {% if p == page %}bg-cloud-600 text-white{% else %}bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400{% endif %} transition-colors">
+                            {{ p }}
+                        </button>
+                        {% endfor %}
+
+                        {% if end_page < total_pages %} <span class="px-2 py-1.5 text-dark-500 text-sm">...</span>
+                            {% endif %}
+
+                            <!-- Next Page -->
+                            <button type="button" onclick="goToPage({{ page + 1 }})"
+                                class="px-3 py-1.5 rounded-lg text-sm {% if page == total_pages %}bg-dark-700/50 text-dark-500 cursor-not-allowed{% else %}bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400{% endif %} transition-colors"
+                                {% if page==total_pages %}disabled{% endif %}>
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+
+                            <!-- Last Page -->
+                            <button type="button" onclick="goToPage({{ total_pages }})"
+                                class="px-3 py-1.5 rounded-lg text-sm {% if page == total_pages %}bg-dark-700/50 text-dark-500 cursor-not-allowed{% else %}bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400{% endif %} transition-colors"
+                                {% if page==total_pages %}disabled{% endif %}>
+                                <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+                            </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Registered Users -->
+        <div class="mt-8 glass rounded-2xl p-6 animate-fade-in">
+            <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                <i data-lucide="users" class="w-5 h-5 text-primary-400"></i>
+                Registered Users
+            </h2>
+
+            <div class="grid gap-4">
+                {% if users %}
+                {% for email, user_data in users.items() %}
+                <div
+                    class="bg-dark-800/50 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
+                            <i data-lucide="user" class="w-5 h-5 text-primary-400"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-white">{{ user_data.name }}</div>
+                            <div class="text-sm text-dark-400">{{ email }}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="px-3 py-1 bg-cloud-500/10 text-cloud-400 text-xs rounded-full">
+                            {{ user_data.file_ids | length }} files
+                        </span>
+                        <form action="{{ url_for('unified_monitoring.unified_cloud_remove_user') }}" method="POST" class="inline">
+                            <input type="hidden" name="email" value="{{ email }}">
+                            <button type="submit" onclick="return confirm('Remove this user?')"
+                                class="text-red-400 hover:text-red-300 transition-colors">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-8 text-dark-500">No users registered</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    // Pagination state
+    let currentPage = {{ page }};
+    let perPage = {{ per_page }};
+    let searchQuery = '{{ search_query }}';
+    let totalPages = {{ total_pages }};
+    let totalFiles = {{ total_files }};
+
+    // File input display
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+        const fileName = e.target.files[0]?.name || 'No file selected';
+        document.getElementById('fileName').textContent = fileName;
+    });
+
+    // Search on Enter key
+    document.querySelector('input[name="search"]')?.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchFiles();
+        }
+    });
+
+    // Fetch files via AJAX
+    async function fetchFiles(page, perPage, search) {
+        const tableBody = document.querySelector('tbody.divide-y');
+        const loading = document.createElement('tr');
+        loading.innerHTML = '<td colspan="5" class="py-8 text-center text-cloud-400"><div class="inline-flex items-center gap-2"><svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Loading...</span></div></td>';
+        tableBody.innerHTML = '';
+        tableBody.appendChild(loading);
+
+        try {
+            const response = await fetch(`/unified-monitoring/cloud/api/files?page=${page}&per_page=${perPage}&search=${encodeURIComponent(search)}`);
+            const data = await response.json();
+
+            if (data.success) {
+                currentPage = data.page;
+                totalPages = data.total_pages;
+                totalFiles = data.total_files;
+
+                renderTable(data.files);
+                renderPagination(data);
+                updatePageInfo(data);
+            }
+        } catch (error) {
+            console.error('Error fetching files:', error);
+            tableBody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-red-400">Error loading files</td></tr>';
+        }
+    }
+
+    // Render table rows
+    function renderTable(files) {
+        const tableBody = document.querySelector('tbody.divide-y');
+
+        if (files.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-dark-500">No files found</td></tr>';
+            return;
+        }
+
+        tableBody.innerHTML = files.map(file => `
+            <tr class="hover:bg-dark-800/30">
+                <td class="py-3 text-dark-500 text-sm">${file.index}</td>
+                <td class="py-3 text-white">${escapeHtml(file.name)}</td>
+                <td class="py-3 text-dark-400 text-sm">${escapeHtml(file.mimeType)}</td>
+                <td class="py-3 text-dark-400 text-sm">${file.modifiedTime}</td>
+                <td class="py-3 text-dark-400 text-sm">${file.size} KB</td>
+            </tr>
+        `).join('');
+    }
+
+    // Render pagination controls
+    function renderPagination(data) {
+        const container = document.querySelector('.flex.items-center.gap-1');
+        if (!container) return;
+
+        let html = '';
+
+        // First button
+        html += `<button onclick="goToPage(1)" class="px-3 py-1.5 rounded-lg text-sm ${data.page === 1 ? 'bg-dark-700/50 text-dark-500 cursor-not-allowed' : 'bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400'} transition-colors" ${data.page === 1 ? 'disabled' : ''}>
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+        </button>`;
+
+        // Previous button
+        html += `<button onclick="goToPage(${data.page - 1})" class="px-3 py-1.5 rounded-lg text-sm ${data.page === 1 ? 'bg-dark-700/50 text-dark-500 cursor-not-allowed' : 'bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400'} transition-colors" ${data.page === 1 ? 'disabled' : ''}>
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>`;
+
+        // Page numbers
+        let startPage = Math.max(1, data.page - 2);
+        let endPage = Math.min(data.total_pages, data.page + 2);
+
+        if (startPage > 1) {
+            html += '<span class="px-2 py-1.5 text-dark-500 text-sm">...</span>';
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+            html += `<button onclick="goToPage(${p})" class="px-3 py-1.5 rounded-lg text-sm ${p === data.page ? 'bg-cloud-600 text-white' : 'bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400'} transition-colors">${p}</button>`;
+        }
+
+        if (endPage < data.total_pages) {
+            html += '<span class="px-2 py-1.5 text-dark-500 text-sm">...</span>';
+        }
+
+        // Next button
+        html += `<button onclick="goToPage(${data.page + 1})" class="px-3 py-1.5 rounded-lg text-sm ${data.page === data.total_pages ? 'bg-dark-700/50 text-dark-500 cursor-not-allowed' : 'bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400'} transition-colors" ${data.page === data.total_pages ? 'disabled' : ''}>
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>`;
+
+        // Last button
+        html += `<button onclick="goToPage(${data.total_pages})" class="px-3 py-1.5 rounded-lg text-sm ${data.page === data.total_pages ? 'bg-dark-700/50 text-dark-500 cursor-not-allowed' : 'bg-dark-800/50 text-dark-300 hover:bg-cloud-500/20 hover:text-cloud-400'} transition-colors" ${data.page === data.total_pages ? 'disabled' : ''}>
+            <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+        </button>`;
+
+        container.innerHTML = html;
+
+        // Show/hide pagination
+        const paginationSection = container.closest('.mt-6');
+        if (paginationSection) {
+            paginationSection.classList.toggle('hidden', data.total_pages <= 1);
+        }
+    }
+
+    // Update page info text
+    function updatePageInfo(data) {
+        const pageInfoDiv = document.querySelector('.text-sm.text-dark-400');
+        if (pageInfoDiv && pageInfoDiv.textContent.includes('Showing')) {
+            pageInfoDiv.innerHTML = `Showing <span class="text-white font-medium">${data.start_idx}</span> to <span class="text-white font-medium">${data.end_idx}</span> of <span class="text-white font-medium">${data.total_files}</span> files`;
+        }
+
+        // Update total count badge
+        const totalBadge = document.querySelector('.bg-cloud-500\\/10.text-cloud-400');
+        if (totalBadge) {
+            totalBadge.textContent = `${data.total_files} total`;
+        }
+    }
+
+    // Go to specific page
+    function goToPage(page) {
+        if (page < 1 || page > totalPages || page === currentPage) return;
+        fetchFiles(page, perPage, searchQuery);
+    }
+
+    // Change items per page
+    function changePerPage() {
+        const select = document.querySelector('select[name="per_page"]');
+        if (select) {
+            perPage = parseInt(select.value);
+            currentPage = 1;
+            fetchFiles(1, perPage, searchQuery);
+        }
+    }
+
+    // Search files
+    function searchFiles() {
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput) {
+            searchQuery = searchInput.value;
+            currentPage = 1;
+            fetchFiles(1, perPage, searchQuery);
+        }
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

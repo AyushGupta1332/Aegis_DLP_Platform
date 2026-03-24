@@ -1,0 +1,152 @@
+{% extends "unified_base.html" %}
+
+{% block title %}My Files - FileGuard{% endblock %}
+
+{% block body %}
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <div class="flex items-center space-x-6">
+                <a href="/unified-monitoring" class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-cloud-500 to-cloud-600 flex items-center justify-center">
+                        <i data-lucide="cloud" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="text-xl font-bold text-cloud-400">Cloud System</span>
+                </a>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_dashboard') }}"
+                        class="px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors">Dashboard</a>
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_admin') }}"
+                        class="px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors">Admin</a>
+                    <a href="{{ url_for('unified_monitoring.unified_cloud_files') }}"
+                        class="px-4 py-2 rounded-lg bg-cloud-500/10 text-cloud-400 font-medium">My Files</a>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                {% if user %}
+                <div class="flex items-center gap-3">
+                    {% if user.picture %}
+                    <img src="{{ user.picture }}" alt="{{ user.name }}" class="w-8 h-8 rounded-full">
+                    {% else %}
+                    <div class="w-8 h-8 rounded-full bg-cloud-500/20 flex items-center justify-center">
+                        <i data-lucide="user" class="w-4 h-4 text-cloud-400"></i>
+                    </div>
+                    {% endif %}
+                    <span class="hidden md:inline text-sm text-dark-300">{{ user.name }}</span>
+                </div>
+                {% endif %}
+                <a href="{{ url_for('unified_monitoring.unified_cloud_logout') }}"
+                    class="px-4 py-2 text-dark-400 hover:text-white transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="pt-24 pb-12 px-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8 animate-slide-up">
+            <h1 class="text-3xl font-bold text-white mb-2">My Files</h1>
+            <p class="text-dark-400">Access files assigned to your account</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div
+            class="mb-6 p-4 rounded-xl animate-slide-down {% if category == 'error' %}bg-red-500/10 border border-red-500/20 text-red-400{% elif category == 'success' %}bg-green-500/10 border border-green-500/20 text-green-400{% else %}bg-yellow-500/10 border border-yellow-500/20 text-yellow-400{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Email Search -->
+        <div class="glass rounded-2xl p-6 mb-8 animate-fade-in">
+            <h2 class="text-lg font-semibold text-white mb-4">Check Files by Email</h2>
+            <form method="POST" class="flex gap-4">
+                <input type="email" name="email" required
+                    class="flex-1 px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-cloud-500 focus:ring-1 focus:ring-cloud-500 transition-all"
+                    placeholder="Enter email to check assigned files" value="{{ searched_email or '' }}">
+                <button type="submit"
+                    class="px-6 py-3 bg-cloud-600 hover:bg-cloud-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2">
+                    <i data-lucide="search" class="w-5 h-5"></i>
+                    Search
+                </button>
+            </form>
+
+            {% if logged_in_email %}
+            <p class="mt-3 text-sm text-dark-400">
+                Or check files for your logged-in email:
+                <a href="{{ url_for('unified_monitoring.unified_cloud_files', email=logged_in_email) }}"
+                    class="text-cloud-400 hover:text-cloud-300">{{ logged_in_email }}</a>
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Files List -->
+        {% if files %}
+        <div class="glass rounded-2xl p-6 animate-fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Files for {{ user_name }}</h2>
+                    <p class="text-dark-400 text-sm">{{ email }}</p>
+                </div>
+                <span class="px-3 py-1 bg-cloud-500/10 text-cloud-400 text-sm rounded-full">
+                    {{ files | length }} files
+                </span>
+            </div>
+
+            <div class="space-y-3">
+                {% for file in files %}
+                <div
+                    class="bg-dark-800/50 rounded-xl p-4 flex items-center justify-between hover:bg-dark-800 transition-colors">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-lg bg-cloud-500/20 flex items-center justify-center">
+                            {% if 'folder' in file.mimeType.lower() %}
+                            <i data-lucide="folder" class="w-5 h-5 text-cloud-400"></i>
+                            {% elif 'image' in file.mimeType.lower() %}
+                            <i data-lucide="image" class="w-5 h-5 text-cloud-400"></i>
+                            {% elif 'pdf' in file.mimeType.lower() %}
+                            <i data-lucide="file-text" class="w-5 h-5 text-cloud-400"></i>
+                            {% else %}
+                            <i data-lucide="file" class="w-5 h-5 text-cloud-400"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="font-medium text-white">{{ file.name }}</div>
+                            <div class="text-sm text-dark-400">{{ file.mimeType.split('.')[-1] }}</div>
+                        </div>
+                    </div>
+                    {% if file.webViewLink %}
+                    <a href="{{ file.webViewLink }}" target="_blank" rel="noopener"
+                        class="px-4 py-2 bg-cloud-600 hover:bg-cloud-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="external-link" class="w-4 h-4"></i>
+                        Open
+                    </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% elif email %}
+        <div class="glass rounded-2xl p-12 text-center animate-fade-in">
+            <div class="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="folder-x" class="w-8 h-8 text-dark-500"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">No Files Found</h3>
+            <p class="text-dark-400">No files have been assigned to this email address.</p>
+            <p class="text-dark-500 text-sm mt-2">Contact an administrator to get access.</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
+

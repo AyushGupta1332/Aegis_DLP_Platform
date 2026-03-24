@@ -1,0 +1,41 @@
+{
+  "_description": "Correlation engine threshold overrides. Modify these to tune detection sensitivity without code changes.",
+  "_updated": "2026-03-22",
+  "rules": {
+    "RANSOMWARE_PATTERN": {
+      "count_threshold": 50,
+      "time_window": 60,
+      "cooldown": 60
+    },
+    "BULK_SENSITIVE_ACCESS": {
+      "count_threshold": 10,
+      "time_window": 300,
+      "cooldown": 300
+    },
+    "FAILED_AUTH_BRUTE_FORCE": {
+      "count_threshold": 5,
+      "time_window": 120,
+      "cooldown": 300
+    },
+    "PHISHING_MALWARE_CHAIN": {
+      "time_window": 3600,
+      "cooldown": 300
+    },
+    "UNAUTHORIZED_DATA_THEFT": {
+      "time_window": 300,
+      "cooldown": 120
+    },
+    "USB_NETWORK_CORRELATION": {
+      "time_window": 300,
+      "cooldown": 300
+    },
+    "MALWARE_C2_DETECTED": {
+      "time_window": 600,
+      "cooldown": 600
+    },
+    "PHISHING_FILE_EXEC": {
+      "time_window": 1800,
+      "cooldown": 600
+    }
+  }
+}

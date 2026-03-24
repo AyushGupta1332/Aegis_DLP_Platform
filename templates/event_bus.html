@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Bus - Aegis DLP</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        }
+
+        .card-glass {
+            background: rgba(30, 30, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Scrollbar */
+        .scroll-container {
+            max-height: 520px;
+            overflow-y: auto;
+        }
+
+        .scroll-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroll-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .scroll-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        /* Event severity colors */
+        .severity-info {
+            color: #60a5fa;
+        }
+
+        .severity-low {
+            color: #34d399;
+        }
+
+        .severity-medium {
+            color: #fbbf24;
+        }
+
+        .severity-high {
+            color: #f97316;
+        }
+
+        .severity-critical {
+            color: #ef4444;
+        }
+
+        .severity-bg-info {
+            background: rgba(96, 165, 250, 0.15);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+
+        .severity-bg-low {
+            background: rgba(52, 211, 153, 0.15);
+            border-color: rgba(52, 211, 153, 0.3);
+        }
+
+        .severity-bg-medium {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .severity-bg-high {
+            background: rgba(249, 115, 22, 0.15);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .severity-bg-critical {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        /* Event row animation */
+        .event-row {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .event-row:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(4px);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .event-new {
+            animation: slideIn 0.4s ease-out;
+        }
+
+        /* Pulse for critical */
+        @keyframes pulse-critical {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.2);
+            }
+        }
+
+        .pulse-critical {
+            animation: pulse-critical 2s infinite;
+        }
+
+        /* Live dot */
+        @keyframes livePulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(1.5);
+            }
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: livePulse 2s infinite;
+            display: inline-block;
+        }
+
+        /* Tab styles */
+        .tab-btn {
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .tab-btn:hover {
+            color: #fbbf24;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Rule toggle */
+        .rule-toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .rule-toggle.on {
+            background: #10b981;
+        }
+
+        .rule-toggle.off {
+            background: #4b5563;
+        }
+
+        .rule-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            transition: transform 0.3s ease;
+        }
+
+        .rule-toggle.on::after {
+            transform: translateX(20px);
+        }
+
+        /* Alert card glow */
+        .alert-card-critical {
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(30, 30, 46, 0.8));
+        }
+
+        .alert-card-high {
+            border: 1px solid rgba(249, 115, 22, 0.4);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(30, 30, 46, 0.8));
+        }
+
+        .alert-card-medium {
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(30, 30, 46, 0.8));
+        }
+
+        /* Status indicator */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-healthy {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .status-warning {
+            background: #fbbf24;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+
+        .status-error {
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        /* Filter chip */
+        .filter-chip {
+            transition: all 0.2s ease;
+        }
+
+        .filter-chip.active {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e1e2e;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .detail-label {
+            width: 150px;
+            font-weight: 600;
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            flex: 1;
+            word-break: break-all;
+        }
+    </style>
+</head>
+
+<body class="gradient-bg min-h-screen text-white">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full top-0 z-50 bg-gray-900/80 backdrop-blur-lg border-b border-gray-800">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="flex items-center space-x-3">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <span
+                            class="text-xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">Event
+                            Bus</span>
+                    </a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm" id="connectionBadge">
+                        <span class="live-dot"></span>
+                        <span id="connectionText" class="text-green-400 text-sm font-medium">Connected</span>
+                    </div>
+                    <a href="/"
+                        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition duration-300 text-sm">
+                        ← Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 pt-24 pb-12">
+
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">Security Event Bus</h1>
+            <p class="text-gray-400">Real-time security event monitoring, threat correlation & automated responses</p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8" id="statsGrid">
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-white" id="statTotalEvents">0</div>
+                <div class="text-sm text-gray-400">Total Events</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-amber-400" id="statSubscribers">0</div>
+                <div class="text-sm text-gray-400">Subscribers</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-purple-400" id="statRulesActive">0</div>
+                <div class="text-sm text-gray-400">Active Rules</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-red-400" id="statCorrelations">0</div>
+                <div class="text-sm text-gray-400">Correlations</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-green-400" id="statResponses">0</div>
+                <div class="text-sm text-gray-400">Responses</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-cyan-400" id="statEventsPerMin">0</div>
+                <div class="text-sm text-gray-400">Events/min</div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="flex gap-6 mb-6 border-b border-gray-700 pb-0">
+            <button class="tab-btn active pb-3 font-semibold text-sm uppercase tracking-wide"
+                onclick="switchTab('live', event)">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Live Events
+                </span>
+            </button>
+            <button class="tab-btn pb-3 font-semibold text-sm uppercase tracking-wide text-gray-400"
+                onclick="switchTab('alerts', event)">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+                        </path>
+                    </svg>
+                    Correlation Alerts
+                    <span id="alertsBadge"
+                        class="hidden px-2 py-0.5 bg-red-500 text-white text-xs rounded-full font-bold">0</span>
+                </span>
+            </button>
+            <button class="tab-btn pb-3 font-semibold text-sm uppercase tracking-wide text-gray-400"
+                onclick="switchTab('responses', event)">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                        </path>
+                    </svg>
+                    Response Actions
+                </span>
+            </button>
+            <button class="tab-btn pb-3 font-semibold text-sm uppercase tracking-wide text-gray-400"
+                onclick="switchTab('rules', event)">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Correlation Rules
+                </span>
+            </button>
+        </div>
+
+        <!-- ============ TAB: LIVE EVENTS ============ -->
+        <div id="tab-live" class="tab-content active">
+            <div class="card-glass rounded-xl p-6">
+                <!-- Filter Bar -->
+                <div class="flex flex-wrap items-center gap-3 mb-4">
+                    <span class="text-sm text-gray-400 font-medium">Filter:</span>
+                    <button
+                        class="filter-chip active px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="all" onclick="filterLiveEvents('all')">All</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="file" onclick="filterLiveEvents('file')">📁 File</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="usb" onclick="filterLiveEvents('usb')">🔌 USB</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="net" onclick="filterLiveEvents('net')">🌐 Network</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="phish" onclick="filterLiveEvents('phish')">🎣 Phishing</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="malware" onclick="filterLiveEvents('malware')">🦠 Malware</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="encrypt" onclick="filterLiveEvents('encrypt')">🔐 Encryption</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="data" onclick="filterLiveEvents('data')">📊 Data</button>
+                    <button
+                        class="filter-chip px-3 py-1 rounded-full text-xs font-semibold bg-gray-700 hover:bg-gray-600"
+                        data-filter="system" onclick="filterLiveEvents('system')">⚙️ System</button>
+
+                    <div class="ml-auto flex items-center gap-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                            <input type="checkbox" id="autoscroll" checked class="rounded accent-amber-500">
+                            Auto-scroll
+                        </label>
+                        <button onclick="clearLiveEvents()"
+                            class="px-3 py-1 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Live Event Feed -->
+                <div id="liveFeed" class="scroll-container space-y-2">
+                    <div id="liveEmpty" class="text-center py-16 text-gray-500">
+                        <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <p class="text-lg mb-1">Waiting for events...</p>
+                        <p class="text-sm">Events will appear here in real-time as modules publish them</p>
+                    </div>
+                    <div id="liveList" class="space-y-2 hidden">
+                        <!-- Events will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ TAB: CORRELATION ALERTS ============ -->
+        <div id="tab-alerts" class="tab-content">
+            <div class="space-y-4" id="alertsList">
+                <div class="text-center py-16 text-gray-500" id="alertsEmpty">
+                    <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                        </path>
+                    </svg>
+                    <p class="text-lg mb-1">No correlation alerts</p>
+                    <p class="text-sm">Alerts appear when the Correlation Engine detects compound threats</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ TAB: RESPONSE ACTIONS ============ -->
+        <div id="tab-responses" class="tab-content">
+            <div class="card-glass rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                            </path>
+                        </svg>
+                        Automated Response Log
+                    </h3>
+                    <button onclick="loadResponseLog()"
+                        class="px-3 py-1 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Refresh</button>
+                </div>
+                <div id="responseLog" class="scroll-container space-y-2">
+                    <div id="responseEmpty" class="text-center py-16 text-gray-500">
+                        <p class="text-lg mb-1">No response actions yet</p>
+                        <p class="text-sm">Automated responses will be logged here when correlation rules trigger</p>
+                    </div>
+                    <div id="responseList" class="space-y-2 hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ TAB: CORRELATION RULES ============ -->
+        <div id="tab-rules" class="tab-content">
+            <div class="card-glass rounded-xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Correlation Rules
+                    </h3>
+                    <button onclick="loadRules()"
+                        class="px-3 py-1 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 transition">Refresh</button>
+                </div>
+                <div id="rulesList" class="space-y-3"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Event Detail Modal -->
+    <div id="eventModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold">Event Details</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 space-y-3 z-50"></div>
+
+    <!-- AI Chatbot Widget -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
+    <script>
+        // ================================================================
+        // STATE
+        // ================================================================
+        const socket = io();
+        let liveEvents = [];
+        let currentFilter = 'all';
+        let correlationAlerts = [];
+        let responseActions = [];
+        let correlationRules = [];
+        let eventCount = 0;
+        let eventsLastMinute = [];
+        let initialDataLoaded = false;
+
+        // Event cache for modal display (avoids JSON in onclick)
+        const eventCache = new Map();
+
+        // ================================================================
+        // SOCKET.IO HANDLERS
+        // ================================================================
+        socket.on('connect', () => {
+            console.log('[EventBus] Socket.IO connected');
+            document.getElementById('connectionText').textContent = 'Connected';
+            document.getElementById('connectionText').className = 'text-green-400 text-sm font-medium';
+            if (!initialDataLoaded) {
+                loadInitialData();
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('[EventBus] Socket.IO disconnected');
+            document.getElementById('connectionText').textContent = 'Disconnected';
+            document.getElementById('connectionText').className = 'text-red-400 text-sm font-medium';
+        });
+
+        // Real-time security event
+        socket.on('security_event', (evt) => {
+            console.log('[EventBus] Received event:', evt.event_type, evt.severity);
+            addLiveEvent(evt);
+            eventCount++;
+            eventsLastMinute.push(Date.now());
+            updateStats();
+        });
+
+        // Real-time critical alert
+        socket.on('critical_alert', (data) => {
+            showToast(data.message || 'Critical security alert!', 'critical');
+        });
+
+        // Real-time correlation match
+        socket.on('correlation_match', (data) => {
+            addCorrelationAlert(data);
+            showToast(`🚨 Correlation: ${data.rule_name || 'Unknown rule'}`, 'critical');
+        });
+
+        // Real-time response action
+        socket.on('response_action', (data) => {
+            addResponseAction(data);
+        });
+
+        // ================================================================
+        // DATA LOADING
+        // ================================================================
+        async function loadInitialData() {
+            await Promise.all([
+                loadRecentEvents(),
+                loadStats(),
+                loadCorrelationAlerts(),
+                loadResponseLog(),
+                loadRules()
+            ]);
+        }
+
+        async function loadRecentEvents() {
+            try {
+                const res = await fetch('/api/events/recent?limit=100');
+                if (!res.ok) {
+                    console.warn('[EventBus] API returned', res.status);
+                    return;
+                }
+                const data = await res.json();
+                console.log('[EventBus] Loaded', (data.events || []).length, 'recent events');
+                if (data.events && data.events.length > 0) {
+                    // API returns most-recent-first, we want chronological order
+                    liveEvents = data.events.reverse();
+                    renderLiveEvents();
+                }
+                initialDataLoaded = true;
+            } catch (e) {
+                console.error('[EventBus] Failed to load events:', e);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/events/stats');
+                const data = await res.json();
+
+                if (data.bus) {
+                    document.getElementById('statTotalEvents').textContent = formatNumber(data.bus.total_published || 0);
+                    document.getElementById('statSubscribers').textContent = data.bus.active_subscriptions || 0;
+                    eventCount = data.bus.total_published || 0;
+                }
+                if (data.correlation) {
+                    document.getElementById('statRulesActive').textContent = data.correlation.rules_loaded || 0;
+                    document.getElementById('statCorrelations').textContent = data.correlation.matches_found || 0;
+                }
+                if (data.responses) {
+                    document.getElementById('statResponses').textContent = data.responses.total_actions || 0;
+                }
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
+        async function loadCorrelationAlerts() {
+            try {
+                const res = await fetch('/api/events/correlation/matches?limit=50');
+                const data = await res.json();
+                if (data.matches) {
+                    correlationAlerts = data.matches;
+                    renderCorrelationAlerts();
+                }
+            } catch (e) {
+                console.error('Failed to load alerts:', e);
+            }
+        }
+
+        async function loadResponseLog() {
+            try {
+                const res = await fetch('/api/events/responses/log?limit=50');
+                const data = await res.json();
+                if (data.actions) {
+                    responseActions = data.actions;
+                    renderResponseLog();
+                }
+            } catch (e) {
+                console.error('Failed to load response log:', e);
+            }
+        }
+
+        async function loadRules() {
+            try {
+                const res = await fetch('/api/events/correlation/rules');
+                const data = await res.json();
+                if (data.rules) {
+                    correlationRules = data.rules;
+                    renderRules();
+                }
+            } catch (e) {
+                console.error('Failed to load rules:', e);
+            }
+        }
+
+        // ================================================================
+        // LIVE EVENTS
+        // ================================================================
+        function addLiveEvent(event) {
+            liveEvents.push(event);
+            if (liveEvents.length > 200) liveEvents.shift();
+            renderLiveEvents();
+        }
+
+        function renderLiveEvents() {
+            const empty = document.getElementById('liveEmpty');
+            const list = document.getElementById('liveList');
+            const filteredEvents = currentFilter === 'all'
+                ? liveEvents
+                : liveEvents.filter(e => (e.event_type || '').startsWith(currentFilter + '.'));
+
+            if (filteredEvents.length === 0) {
+                empty.classList.remove('hidden');
+                list.classList.add('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.classList.remove('hidden');
+
+            // Render last 100 events (most recent at bottom for live feel)
+            const displayEvents = filteredEvents.slice(-100);
+            const rows = [];
+            for (let i = 0; i < displayEvents.length; i++) {
+                try {
+                    const isNew = i === displayEvents.length - 1;
+                    rows.push(createEventRow(displayEvents[i], isNew));
+                } catch (err) {
+                    console.error('[EventBus] Failed to render event row:', err, displayEvents[i]);
+                }
+            }
+            list.innerHTML = rows.join('');
+
+            // Auto-scroll
+            if (document.getElementById('autoscroll').checked) {
+                const feed = document.getElementById('liveFeed');
+                feed.scrollTop = feed.scrollHeight;
+            }
+        }
+
+        function createEventRow(event, isNew = false) {
+            const severity = event.severity || 'info';
+            const eventType = event.event_type || 'unknown';
+            const source = event.source || 'unknown';
+            const timestamp = formatTimestamp(event.timestamp);
+            const icon = getEventIcon(eventType);
+            const severityColor = getSeverityColor(severity);
+
+            // Cache event for modal lookup — avoids unsafe inline JSON
+            const eventId = event.event_id || ('evt_' + Math.random().toString(36).substr(2, 9));
+            eventCache.set(eventId, event);
+
+            // Escape special characters for safe HTML attribute
+            const safeId = eventId.replace(/"/g, '&quot;');
+            const safeSummary = escapeHtml(getEventSummary(event));
+
+            return `
+                <div class="event-row rounded-lg p-3 bg-gray-800/50 border-l-3 ${isNew ? 'event-new' : ''}" 
+                     style="border-left: 3px solid ${severityColor}"
+                     data-event-id="${safeId}"
+                     onclick="showEventModalById('${safeId}')">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="text-lg flex-shrink-0">${icon}</span>
+                            <div class="min-w-0">
+                                <div class="font-medium flex items-center gap-2 flex-wrap">
+                                    <span class="text-sm">${formatEventType(eventType)}</span>
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase severity-${severity}" 
+                                          style="background: ${severityColor}22">${severity}</span>
+                                </div>
+                                <div class="text-xs text-gray-500 truncate">${safeSummary}</div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0 ml-3">
+                            <div class="text-xs text-gray-400">${timestamp}</div>
+                            <div class="text-xs text-gray-600">${source}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        function filterLiveEvents(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+            renderLiveEvents();
+        }
+
+        function clearLiveEvents() {
+            liveEvents = [];
+            renderLiveEvents();
+        }
+
+        // ================================================================
+        // CORRELATION ALERTS
+        // ================================================================
+        function addCorrelationAlert(alert) {
+            correlationAlerts.unshift(alert);
+            renderCorrelationAlerts();
+            updateAlertsBadge();
+        }
+
+        function renderCorrelationAlerts() {
+            const list = document.getElementById('alertsList');
+            const empty = document.getElementById('alertsEmpty');
+
+            if (correlationAlerts.length === 0) {
+                list.innerHTML = '';
+                list.appendChild(empty);
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.innerHTML = correlationAlerts.map(alert => {
+                const level = alert.threat_level || 'medium';
+                const cardClass = level === 'critical' ? 'alert-card-critical pulse-critical' :
+                    level === 'high' ? 'alert-card-high' : 'alert-card-medium';
+                const events = alert.matched_events || [];
+                const actions = alert.response_actions || [];
+                const resolved = alert.resolved;
+
+                return `
+                    <div class="${cardClass} rounded-xl p-5 backdrop-blur-sm">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h4 class="text-lg font-bold flex items-center gap-2">
+                                    ${level === 'critical' ? '🚨' : level === 'high' ? '⚠️' : '🔔'}
+                                    ${alert.rule_name || 'Unknown Rule'}
+                                </h4>
+                                <p class="text-sm text-gray-400 mt-1">${formatTimestamp(alert.timestamp)}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-3 py-1 rounded-full text-xs font-bold uppercase severity-${level}" 
+                                      style="background: ${getSeverityColor(level)}22; border: 1px solid ${getSeverityColor(level)}44">
+                                    ${level}
+                                </span>
+                                ${resolved ? '<span class="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">Resolved</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Matched Events (${events.length})</p>
+                                <div class="space-y-1">
+                                    ${events.slice(0, 5).map(id => `
+                                        <span class="inline-block px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-300 font-mono">${id}</span>
+                                    `).join('')}
+                                    ${events.length > 5 ? `<span class="text-xs text-gray-500">+${events.length - 5} more</span>` : ''}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Response Actions</p>
+                                <div class="space-y-1">
+                                    ${actions.map(a => `
+                                        <span class="inline-block px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-xs text-amber-300">${a}</span>
+                                    `).join('')}
+                                    ${actions.length === 0 ? '<span class="text-xs text-gray-500">None triggered</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            updateAlertsBadge();
+        }
+
+        function updateAlertsBadge() {
+            const badge = document.getElementById('alertsBadge');
+            const unresolved = correlationAlerts.filter(a => !a.resolved).length;
+            if (unresolved > 0) {
+                badge.textContent = unresolved;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // ================================================================
+        // RESPONSE LOG
+        // ================================================================
+        function addResponseAction(action) {
+            responseActions.unshift(action);
+            renderResponseLog();
+        }
+
+        function renderResponseLog() {
+            const empty = document.getElementById('responseEmpty');
+            const list = document.getElementById('responseList');
+
+            if (responseActions.length === 0) {
+                empty.classList.remove('hidden');
+                list.classList.add('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.classList.remove('hidden');
+
+            list.innerHTML = responseActions.map(action => {
+                const success = action.success;
+                const statusIcon = success ? '✅' : '❌';
+                const statusColor = success ? 'text-green-400' : 'text-red-400';
+
+                return `
+                    <div class="rounded-lg p-3 bg-gray-800/50 border-l-3" style="border-left: 3px solid ${success ? '#10b981' : '#ef4444'}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-lg">${statusIcon}</span>
+                                <div>
+                                    <div class="font-medium text-sm flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded bg-gray-700 text-xs font-mono">${action.action || '?'}</span>
+                                        <span class="text-gray-400">→</span>
+                                        <span>${action.rule_name || 'Unknown'}</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-0.5">
+                                        Correlation: <span class="font-mono">${action.correlation_id || 'N/A'}</span>
+                                        ${action.elapsed_ms ? ` · ${action.elapsed_ms}ms` : ''}
+                                        ${action.error ? ` · <span class="text-red-400">${action.error}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-400">${formatTimestamp(action.timestamp)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ================================================================
+        // CORRELATION RULES
+        // ================================================================
+        function renderRules() {
+            const list = document.getElementById('rulesList');
+
+            if (correlationRules.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-500 py-8">No correlation rules loaded</div>';
+                return;
+            }
+
+            list.innerHTML = correlationRules.map(rule => {
+                const enabled = rule.enabled;
+                const triggers = rule.trigger_events || [];
+                const responses = rule.responses || [];
+                const threatLevel = rule.threat_level || 'medium';
+
+                return `
+                    <div class="rounded-xl p-4 bg-gray-800/50 border border-gray-700/50 hover:border-gray-600 transition">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <h4 class="font-semibold">${rule.name || 'Unnamed Rule'}</h4>
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase severity-${threatLevel}"
+                                          style="background: ${getSeverityColor(threatLevel)}22; border: 1px solid ${getSeverityColor(threatLevel)}44">
+                                        ${threatLevel}
+                                    </span>
+                                    ${rule.times_fired > 0 ? `<span class="px-2 py-0.5 rounded-full text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30">Fired ${rule.times_fired}x</span>` : ''}
+                                </div>
+                                <p class="text-sm text-gray-400 mb-3">${rule.description || 'No description'}</p>
+                                <div class="flex flex-wrap gap-2 mb-2">
+                                    <span class="text-xs text-gray-500 font-semibold">Triggers:</span>
+                                    ${triggers.map(t => `<span class="px-2 py-0.5 rounded bg-gray-700 text-xs text-gray-300">${t}</span>`).join('')}
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="text-xs text-gray-500 font-semibold">Actions:</span>
+                                    ${responses.map(r => `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-xs text-amber-300">${r}</span>`).join('')}
+                                </div>
+                                <div class="mt-2 text-xs text-gray-600">
+                                    Window: ${rule.window || '?'}s · Cooldown: ${rule.cooldown || '?'}s
+                                    ${rule.threshold ? ` · Threshold: ${rule.threshold} events` : ''}
+                                </div>
+                            </div>
+                            <div class="rule-toggle ${enabled ? 'on' : 'off'} flex-shrink-0 ml-4"
+                                 onclick="toggleRule('${rule.name}', ${!enabled})"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleRule(ruleName, enabled) {
+            try {
+                const res = await fetch(`/api/events/correlation/rules/${encodeURIComponent(ruleName)}/toggle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showToast(`Rule "${ruleName}" ${enabled ? 'enabled' : 'disabled'}`, 'success');
+                    loadRules();
+                } else {
+                    showToast(data.error || 'Failed to toggle rule', 'error');
+                }
+            } catch (e) {
+                showToast('Failed to toggle rule', 'error');
+            }
+        }
+
+        // ================================================================
+        // TABS
+        // ================================================================
+        function switchTab(tabName, e) {
+            // Use explicit event parameter to avoid shadowing
+            const clickEvent = e || window.event;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.add('text-gray-400'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            if (clickEvent && clickEvent.currentTarget) {
+                clickEvent.currentTarget.classList.add('active');
+                clickEvent.currentTarget.classList.remove('text-gray-400');
+            }
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Refresh data on tab switch
+            if (tabName === 'alerts') loadCorrelationAlerts();
+            if (tabName === 'responses') loadResponseLog();
+            if (tabName === 'rules') loadRules();
+        }
+
+        // ================================================================
+        // EVENT DETAIL MODAL
+        // ================================================================
+        function showEventModalById(eventId) {
+            const evt = eventCache.get(eventId);
+            if (!evt) {
+                console.warn('[EventBus] Event not found in cache:', eventId);
+                return;
+            }
+            showEventModal(evt);
+        }
+
+        function showEventModal(evt) {
+            const modal = document.getElementById('eventModal');
+            const content = document.getElementById('modalContent');
+
+            const fields = [
+                ['Event ID', escapeHtml(evt.event_id || 'N/A')],
+                ['Event Type', formatEventType(evt.event_type || '')],
+                ['Source Module', escapeHtml(evt.source || 'N/A')],
+                ['Severity', `<span class="severity-${evt.severity || 'info'} uppercase font-bold">${evt.severity || 'info'}</span>`],
+                ['Timestamp', formatTimestamp(evt.timestamp, true)],
+                ['Correlation ID', escapeHtml(evt.correlation_id || 'None')],
+            ];
+
+            // Add data fields
+            if (evt.data && typeof evt.data === 'object') {
+                Object.entries(evt.data).forEach(([key, val]) => {
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    const value = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
+                    fields.push([escapeHtml(label), escapeHtml(value)]);
+                });
+            }
+
+            content.innerHTML = fields.map(([label, value]) => `
+                <div class="detail-row">
+                    <span class="detail-label">${label}</span>
+                    <span class="detail-value">${value}</span>
+                </div>
+            `).join('');
+
+            modal.classList.add('active');
+        }
+
+        function closeModal(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('eventModal').classList.remove('active');
+        }
+
+        // ================================================================
+        // HELPERS
+        // ================================================================
+        function formatNumber(n) {
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toString();
+        }
+
+        function formatTimestamp(ts, showFull = false) {
+            if (!ts) return '';
+            // If already in our new format "20 Mar 2026, 12:45:35 PM", use it directly
+            if (typeof ts === 'string' && /^\d{2} \w{3} \d{4},/.test(ts)) {
+                if (showFull) return ts;
+                // For compact display, show time only if today
+                const parts = ts.split(', ');
+                const datePart = parts[0]; // "20 Mar 2026"
+                const timePart = parts.slice(1).join(', '); // "12:45:35 PM"
+                const today = new Date();
+                const todayStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                if (datePart === todayStr) return timePart;
+                // Remove seconds for compact non-today display
+                const shortTime = timePart.replace(/(\d{2}:\d{2}):\d{2}/, '$1');
+                return `${datePart}, ${shortTime}`;
+            }
+            // Fallback: try parsing as ISO or Date string
+            try {
+                const d = new Date(ts);
+                if (isNaN(d.getTime())) return ts;
+                const now = new Date();
+                const isToday = d.toDateString() === now.toDateString();
+                if (showFull) {
+                    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                         + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                }
+                if (isToday) {
+                    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                }
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                     + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            } catch {
+                return ts;
+            }
+        }
+
+        function formatEventType(type) {
+            return (type || '').replace(/\./g, ' › ').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function getEventIcon(type) {
+            if (!type) return '📌';
+            if (type.startsWith('file.')) return '📁';
+            if (type.startsWith('usb.')) return '🔌';
+            if (type.startsWith('net.')) return '🌐';
+            if (type.startsWith('phish.')) return '🎣';
+            if (type.startsWith('malware.')) return '🦠';
+            if (type.startsWith('data.')) return '📊';
+            if (type.startsWith('encrypt.')) return '🔐';
+            if (type.startsWith('alert.')) return '🔔';
+            if (type === 'system.page_visit') return '👁️';
+            if (type === 'system.module_started') return '▶️';
+            if (type === 'system.module_stopped') return '⏹️';
+            if (type.startsWith('system.')) return '⚙️';
+            return '📌';
+        }
+
+        function getSeverityColor(severity) {
+            const colors = {
+                info: '#60a5fa',
+                low: '#34d399',
+                medium: '#fbbf24',
+                high: '#f97316',
+                critical: '#ef4444',
+            };
+            return colors[severity] || colors.info;
+        }
+
+        function getEventSummary(event) {
+            const data = event.data || {};
+            if (data.message) return data.message;
+            if (data.path) return data.path;
+            if (data.filename) return data.filename;
+            if (data.file_path) return data.file_path;
+            if (data.url) return data.url;
+            if (data.device_name) return data.device_name;
+            if (data.module) return data.module;
+            if (data.page_path) return data.page_path;
+            return event.event_type || '';
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const colors = {
+                success: 'from-green-600 to-emerald-600',
+                error: 'from-red-600 to-rose-600',
+                warning: 'from-amber-600 to-yellow-600',
+                info: 'from-blue-600 to-cyan-600',
+                critical: 'from-red-700 to-red-500',
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `bg-gradient-to-r ${colors[type] || colors.info} px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium flex items-center gap-2 animate-slideIn`;
+            toast.style.animation = 'modalSlideIn 0.3s ease';
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-70">✕</button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        // Events per minute counter
+        setInterval(() => {
+            const now = Date.now();
+            eventsLastMinute = eventsLastMinute.filter(t => now - t < 60000);
+            document.getElementById('statEventsPerMin').textContent = eventsLastMinute.length;
+        }, 3000);
+
+        // Refresh stats periodically
+        setInterval(loadStats, 15000);
+
+        // Poll for new events every 10 seconds as a fallback
+        // (in case Socket.IO misses events or has connection issues)
+        setInterval(async () => {
+            try {
+                const res = await fetch('/api/events/recent?limit=20');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.events && data.events.length > 0) {
+                    // Merge any new events we don't already have
+                    const existingIds = new Set(liveEvents.map(e => e.event_id));
+                    const newEvents = data.events.filter(e => !existingIds.has(e.event_id));
+                    if (newEvents.length > 0) {
+                        console.log('[EventBus] Polling found', newEvents.length, 'new events');
+                        // Reverse to chronological order and add
+                        newEvents.reverse().forEach(e => addLiveEvent(e));
+                    }
+                }
+            } catch (e) {
+                // Silently ignore polling errors
+            }
+        }, 10000);
+
+        // Update total event count
+        function updateStats() {
+            document.getElementById('statTotalEvents').textContent = formatNumber(eventCount);
+        }
+
+        // Also load data on page load (fallback if Socket.IO connect fires before script loads)
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[EventBus] DOM loaded, initializing...');
+            setTimeout(() => {
+                if (!initialDataLoaded) {
+                    console.log('[EventBus] Fallback: loading initial data via DOMContentLoaded');
+                    loadInitialData();
+                }
+            }, 1500);
+        });
+    </script>
+
+</body>
+
+</html>

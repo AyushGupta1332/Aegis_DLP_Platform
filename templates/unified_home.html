@@ -1,0 +1,285 @@
+{% extends "unified_base.html" %}
+
+{% block title %}Unified File Monitoring System{% endblock %}
+
+{% block body %}
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <div class="flex items-center space-x-4">
+                <!-- Back Button -->
+                <a href="/" class="text-dark-300 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <!-- Logo -->
+                <a href="/unified-monitoring" class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 via-cloud-500 to-local-500 flex items-center justify-center">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="text-xl font-bold gradient-text">FileGuard</span>
+                </a>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="/unified-monitoring/about"
+                    class="text-dark-300 hover:text-white transition-colors px-4 py-2">About</a>
+                <a href="#systems"
+                    class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-primary-500/25">
+                    Get Started
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="pt-32 pb-20 px-4 relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 left-10 w-72 h-72 bg-primary-500/20 rounded-full blur-3xl animate-pulse-slow"></div>
+        <div class="absolute top-40 right-10 w-96 h-96 bg-cloud-500/15 rounded-full blur-3xl animate-pulse-slow"
+            style="animation-delay: 1s;"></div>
+        <div class="absolute bottom-20 left-1/3 w-80 h-80 bg-local-500/15 rounded-full blur-3xl animate-pulse-slow"
+            style="animation-delay: 2s;"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto text-center relative z-10">
+        <div class="animate-slide-up">
+            <span
+                class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium bg-primary-500/10 text-primary-400 border border-primary-500/20 mb-6">
+                <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i>
+                Unified Security Platform
+            </span>
+
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight">
+                <span class="block text-white">Complete Control Over</span>
+                <span class="gradient-text">Your Files</span>
+            </h1>
+
+            <p class="text-xl text-dark-400 max-w-3xl mx-auto mb-10 leading-relaxed">
+                A powerful unified platform for monitoring and controlling file transfers across
+                <span class="text-cloud-400 font-semibold">Cloud Storage</span> and
+                <span class="text-local-400 font-semibold">Local USB Devices</span>.
+                Enterprise-grade security made simple.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#systems"
+                    class="px-8 py-4 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white rounded-xl font-semibold text-lg transition-all hover:shadow-xl hover:shadow-primary-500/25 flex items-center justify-center gap-2">
+                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    Choose Your System
+                </a>
+                <a href="/unified-monitoring/about"
+                    class="px-8 py-4 glass hover:bg-white/10 text-white rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="info" class="w-5 h-5"></i>
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Overview -->
+<section class="py-16 px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+            <div class="glass rounded-2xl p-6 card-hover">
+                <div class="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center mb-4">
+                    <i data-lucide="lock" class="w-6 h-6 text-primary-400"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">Enterprise Security</h3>
+                <p class="text-dark-400 text-sm">Role-based access control with MAC address and OAuth authentication.
+                </p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 card-hover">
+                <div class="w-12 h-12 rounded-xl bg-cloud-500/20 flex items-center justify-center mb-4">
+                    <i data-lucide="activity" class="w-6 h-6 text-cloud-400"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">Real-Time Monitoring</h3>
+                <p class="text-dark-400 text-sm">Track all file transfers with comprehensive audit trails and alerts.
+                </p>
+            </div>
+
+            <div class="glass rounded-2xl p-6 card-hover">
+                <div class="w-12 h-12 rounded-xl bg-local-500/20 flex items-center justify-center mb-4">
+                    <i data-lucide="shield" class="w-6 h-6 text-local-400"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">Device Control</h3>
+                <p class="text-dark-400 text-sm">Register and manage authorized devices for controlled file transfers.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- System Selection -->
+<section id="systems" class="py-20 px-4">
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-16 animate-slide-up">
+            <h2 class="text-4xl md:text-5xl font-bold text-white mb-4">Choose Your System</h2>
+            <p class="text-dark-400 text-lg max-w-2xl mx-auto">
+                Select the monitoring system that fits your needs. Each system is designed for specific use cases.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Cloud System Card -->
+            <a href="/unified-monitoring/cloud"
+                class="group relative overflow-hidden rounded-3xl glass border border-cloud-500/20 p-8 card-hover glow-cloud transition-all">
+                <div
+                    class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-cloud-500/20 to-transparent rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2 group-hover:scale-150 transition-transform duration-500">
+                </div>
+
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-6">
+                        <div
+                            class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cloud-500 to-cloud-600 flex items-center justify-center shadow-lg shadow-cloud-500/30">
+                            <i data-lucide="cloud" class="w-8 h-8 text-white"></i>
+                        </div>
+                        <span
+                            class="px-3 py-1 rounded-full text-xs font-medium bg-cloud-500/20 text-cloud-400 border border-cloud-500/30">
+                            Google OAuth
+                        </span>
+                    </div>
+
+                    <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-cloud-400 transition-colors">
+                        Cloud Monitoring
+                    </h3>
+
+                    <p class="text-dark-400 mb-6 leading-relaxed">
+                        Secure file sharing through Google Drive with permission-based access control.
+                        Perfect for teams needing cloud-based collaboration.
+                    </p>
+
+                    <div class="space-y-3 mb-8">
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-cloud-500"></i>
+                            Google Drive Integration
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-cloud-500"></i>
+                            OAuth 2.0 Authentication
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-cloud-500"></i>
+                            File Permission Management
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-cloud-500"></i>
+                            User Access Control
+                        </div>
+                    </div>
+
+                    <div class="flex items-center text-cloud-400 font-semibold group-hover:gap-3 gap-2 transition-all">
+                        <span>Login with Google</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Local System Card -->
+            <a href="/unified-monitoring/local"
+                class="group relative overflow-hidden rounded-3xl glass border border-local-500/20 p-8 card-hover glow-local transition-all">
+                <div
+                    class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-local-500/20 to-transparent rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2 group-hover:scale-150 transition-transform duration-500">
+                </div>
+
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-6">
+                        <div
+                            class="w-16 h-16 rounded-2xl bg-gradient-to-br from-local-500 to-local-600 flex items-center justify-center shadow-lg shadow-local-500/30">
+                            <i data-lucide="hard-drive" class="w-8 h-8 text-white"></i>
+                        </div>
+                        <span
+                            class="px-3 py-1 rounded-full text-xs font-medium bg-local-500/20 text-local-400 border border-local-500/30">
+                            MAC + Password
+                        </span>
+                    </div>
+
+                    <h3 class="text-2xl font-bold text-white mb-3 group-hover:text-local-400 transition-colors">
+                        Local Monitoring
+                    </h3>
+
+                    <p class="text-dark-400 mb-6 leading-relaxed">
+                        Control USB device access and file transfers on Windows machines.
+                        Ideal for enterprises requiring strict data transfer policies.
+                    </p>
+
+                    <div class="space-y-3 mb-8">
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-local-500"></i>
+                            USB Device Detection
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-local-500"></i>
+                            MAC Address Authentication
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-local-500"></i>
+                            Device Registration Control
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-dark-300">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-local-500"></i>
+                            Role-Based Access (RBAC)
+                        </div>
+                    </div>
+
+                    <div class="flex items-center text-local-400 font-semibold group-hover:gap-3 gap-2 transition-all">
+                        <span>Login with Credentials</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="py-16 px-4">
+    <div class="max-w-5xl mx-auto">
+        <div class="glass rounded-3xl p-8 md:p-12">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div>
+                    <div class="text-4xl font-bold text-white mb-2">256-bit</div>
+                    <div class="text-dark-400 text-sm">Encryption</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold text-cloud-400 mb-2">OAuth 2.0</div>
+                    <div class="text-dark-400 text-sm">Google Auth</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold text-local-400 mb-2">WMI</div>
+                    <div class="text-dark-400 text-sm">Device Detection</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold text-primary-400 mb-2">100%</div>
+                    <div class="text-dark-400 text-sm">Transfer Control</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-12 px-4 border-t border-white/5">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 via-cloud-500 to-local-500 flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-white"></i>
+                </div>
+                <span class="text-lg font-bold gradient-text">FileGuard</span>
+            </div>
+            <p class="text-dark-500 text-sm">
+                © 2024 Unified File Monitoring System. Enterprise Security.
+            </p>
+        </div>
+    </div>
+</footer>
+{% endblock %}

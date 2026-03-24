@@ -1,0 +1,877 @@
+{% extends "unified_base.html" %}
+
+{% block title %}Local Dashboard - FileGuard{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <div class="flex items-center space-x-6">
+                <a href="/unified-monitoring" class="flex items-center space-x-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-local-500 to-local-600 flex items-center justify-center">
+                        <i data-lucide="hard-drive" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="text-xl font-bold text-local-400">Local System</span>
+                </a>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <button onclick="showSection('devices')"
+                        class="nav-btn px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors"
+                        data-section="devices">Devices</button>
+                    <button onclick="showSection('transfer')"
+                        class="nav-btn px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors"
+                        data-section="transfer">Transfer</button>
+                    <button onclick="showSection('users')" id="navUsersBtn"
+                        class="nav-btn px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors"
+                        data-section="users">Users</button>
+                    <button onclick="showSection('logs')" id="navLogsBtn"
+                        class="nav-btn px-4 py-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-colors"
+                        data-section="logs">Logs</button>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div id="userInfo" class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-local-500/20 flex items-center justify-center">
+                        <i data-lucide="user" class="w-4 h-4 text-local-400"></i>
+                    </div>
+                    <span class="hidden md:inline text-sm text-dark-300" id="usernameDisplay">Loading...</span>
+                    <span id="roleBadge"
+                        class="hidden md:inline px-2 py-1 text-xs font-medium rounded-full bg-local-500/10 text-local-400"></span>
+                </div>
+                <a href="/unified-monitoring/local/logout"
+                    class="px-4 py-2 text-dark-400 hover:text-white transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="pt-24 pb-12 px-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Stats Cards -->
+        <div id="statsSection" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
+            <div class="glass rounded-2xl p-6 border border-local-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-local-500/20 flex items-center justify-center">
+                        <i data-lucide="usb" class="w-6 h-6 text-local-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-white mb-1" id="connectedCount">0</div>
+                <div class="text-dark-400 text-sm">Connected Devices</div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 border border-green-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                        <i data-lucide="check-circle" class="w-6 h-6 text-green-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-white mb-1" id="registeredCount">0</div>
+                <div class="text-dark-400 text-sm">Registered Devices</div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 border border-primary-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                        <i data-lucide="upload" class="w-6 h-6 text-primary-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-white mb-1" id="successCount">0</div>
+                <div class="text-dark-400 text-sm">Successful Transfers</div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 border border-red-500/20">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                        <i data-lucide="x-circle" class="w-6 h-6 text-red-400"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-white mb-1" id="blockedCount">0</div>
+                <div class="text-dark-400 text-sm">Blocked Transfers</div>
+            </div>
+        </div>
+
+        <!-- Devices Section -->
+        <section id="devicesSection" class="mb-8">
+            <div class="glass rounded-2xl p-6 animate-fade-in">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="hard-drive" class="w-5 h-5 text-local-400"></i>
+                        Connected USB Devices
+                    </h2>
+                    <button onclick="scanDevices()"
+                        class="px-4 py-2 bg-local-600 hover:bg-local-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4" id="scanIcon"></i>
+                        Scan Devices
+                    </button>
+                </div>
+
+                <div id="deviceList" class="space-y-3">
+                    <div class="text-center py-8 text-dark-500">
+                        <i data-lucide="usb" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                        <p>Click "Scan Devices" to detect connected USB devices</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transfer Section -->
+        <section id="transferSection" class="mb-8 hidden">
+            <div class="glass rounded-2xl p-6 animate-fade-in">
+                <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                    <i data-lucide="upload" class="w-5 h-5 text-local-400"></i>
+                    File Transfer
+                </h2>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- File Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-300 mb-2">Select File</label>
+                        <div
+                            class="border-2 border-dashed border-dark-600 rounded-xl p-8 text-center hover:border-local-500/50 transition-colors">
+                            <i data-lucide="file-up" class="w-12 h-12 text-dark-500 mx-auto mb-4"></i>
+                            <p class="text-dark-400 mb-2">Drag & drop or</p>
+                            <label class="cursor-pointer">
+                                <span
+                                    class="px-4 py-2 bg-local-600 hover:bg-local-700 text-white rounded-lg font-medium transition-colors inline-block">
+                                    Browse Files
+                                </span>
+                                <input type="file" id="fileInput" class="hidden">
+                            </label>
+                            <p class="text-dark-500 text-sm mt-3" id="selectedFileName">No file selected</p>
+                        </div>
+                    </div>
+
+                    <!-- Destination Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark-300 mb-2">Destination Drive</label>
+                        <select id="destinationDrive"
+                            class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white focus:border-local-500 focus:ring-1 focus:ring-local-500 transition-all">
+                            <option value="">Select destination drive</option>
+                        </select>
+
+                        <div id="driveInfo" class="mt-4 p-4 bg-dark-800/50 rounded-xl hidden">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="info" class="w-5 h-5 text-local-400"></i>
+                                <span class="text-dark-300 text-sm">Only registered devices can receive files</span>
+                            </div>
+                        </div>
+
+                        <button onclick="transferFile()" id="transferBtn"
+                            class="w-full mt-4 px-6 py-4 bg-gradient-to-r from-local-600 to-local-500 hover:from-local-500 hover:to-local-400 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i data-lucide="send" class="w-5 h-5"></i>
+                            Transfer File
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Transfer Status -->
+                <div id="transferStatus" class="hidden mt-6 p-4 rounded-xl"></div>
+            </div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="usersSection" class="mb-8 hidden">
+            <div class="glass rounded-2xl p-6 animate-fade-in">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-local-400"></i>
+                        User Management
+                    </h2>
+                    <button onclick="showAddUserModal()" id="addUserBtn"
+                        class="px-4 py-2 bg-local-600 hover:bg-local-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        Add User
+                    </button>
+                </div>
+
+                <div id="userList" class="space-y-3">
+                    <div class="text-center py-8 text-dark-500">Loading users...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Logs Section -->
+        <section id="logsSection" class="mb-8 hidden">
+            <div class="glass rounded-2xl p-6 animate-fade-in">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="scroll-text" class="w-5 h-5 text-local-400"></i>
+                        Transfer Logs
+                    </h2>
+                    <button onclick="loadLogs()"
+                        class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+
+                <div id="logList" class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left border-b border-dark-700">
+                                <th class="pb-3 text-dark-400 text-sm font-medium">Time</th>
+                                <th class="pb-3 text-dark-400 text-sm font-medium">File</th>
+                                <th class="pb-3 text-dark-400 text-sm font-medium">Destination</th>
+                                <th class="pb-3 text-dark-400 text-sm font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody" class="divide-y divide-dark-700/50">
+                            <tr>
+                                <td colspan="4" class="py-8 text-center text-dark-500">Loading logs...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Back to Home -->
+        <div class="text-center">
+            <a href="/unified-monitoring"
+                class="inline-flex items-center gap-2 text-dark-400 hover:text-white transition-colors">
+                <i data-lucide="home" class="w-4 h-4"></i>
+                Back to Main Dashboard
+            </a>
+        </div>
+    </div>
+</main>
+
+<!-- Add User Modal -->
+<div id="addUserModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="hideAddUserModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+        <div class="glass rounded-2xl p-6 border border-local-500/20 animate-scale-in">
+            <h3 class="text-xl font-semibold text-white mb-6">Add New User</h3>
+            <form id="addUserForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">Username</label>
+                    <input type="text" id="newUsername" required
+                        class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-local-500 focus:ring-1 focus:ring-local-500 transition-all"
+                        placeholder="Enter username">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">Password</label>
+                    <input type="password" id="newPassword" required
+                        class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-local-500 focus:ring-1 focus:ring-local-500 transition-all"
+                        placeholder="Enter password">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">Role</label>
+                    <select id="newRole"
+                        class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white focus:border-local-500 focus:ring-1 focus:ring-local-500 transition-all">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">MAC Address (Optional)</label>
+                    <input type="text" id="newMacAddress"
+                        class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-local-500 focus:ring-1 focus:ring-local-500 transition-all"
+                        placeholder="Auto-detect if empty">
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="hideAddUserModal()"
+                        class="flex-1 px-4 py-3 bg-dark-700 hover:bg-dark-600 text-white rounded-xl font-medium transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="flex-1 px-4 py-3 bg-local-600 hover:bg-local-700 text-white rounded-xl font-medium transition-colors">
+                        Add User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetPasswordModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="hideResetPasswordModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+        <div class="glass rounded-2xl p-6 border border-yellow-500/20 animate-scale-in">
+            <h3 class="text-xl font-semibold text-white mb-2">Reset Password</h3>
+            <p class="text-dark-400 text-sm mb-6">Resetting password for: <span id="resetUserName"
+                    class="text-local-400 font-medium"></span></p>
+            <form id="resetPasswordForm" class="space-y-4">
+                <input type="hidden" id="resetUserId">
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">New Password</label>
+                    <input type="password" id="newResetPassword" required minlength="6"
+                        class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all"
+                        placeholder="Enter new password (min 6 characters)">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark-300 mb-2">Confirm Password</label>
+                    <input type="password" id="confirmResetPassword" required minlength="6"
+                        class="w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white placeholder-dark-500 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all"
+                        placeholder="Confirm new password">
+                </div>
+                <div id="resetPasswordError"
+                    class="hidden p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm"></div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="hideResetPasswordModal()"
+                        class="flex-1 px-4 py-3 bg-dark-700 hover:bg-dark-600 text-white rounded-xl font-medium transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="flex-1 px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2">
+                        <i data-lucide="key" class="w-4 h-4"></i>
+                        Reset Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUser = null;
+    let devices = [];
+    let drives = [];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async function () {
+        await loadCurrentUser();
+        await loadStats();
+        await loadDrives();
+        showSection('devices');
+        lucide.createIcons();
+    });
+
+    // Load current user
+    async function loadCurrentUser() {
+        try {
+            const response = await fetch('/unified-monitoring/local/api/auth/me');
+            const data = await response.json();
+            if (data.success) {
+                currentUser = data.user;
+                document.getElementById('usernameDisplay').textContent = currentUser.username;
+                document.getElementById('roleBadge').textContent = currentUser.role;
+
+                // Hide admin-only features from regular users
+                if (currentUser.role === 'user') {
+                    // Hide Users and Logs nav buttons
+                    document.getElementById('navUsersBtn').style.display = 'none';
+                    document.getElementById('navLogsBtn').style.display = 'none';
+                }
+
+                // Only superadmin/admin can add users
+                if (currentUser.role === 'user') {
+                    const addUserBtn = document.getElementById('addUserBtn');
+                    if (addUserBtn) addUserBtn.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading user:', error);
+        }
+    }
+
+    // Load stats
+    async function loadStats() {
+        try {
+            const response = await fetch('/unified-monitoring/local/api/stats');
+            const data = await response.json();
+            if (data.success && data.stats) {
+                document.getElementById('registeredCount').textContent = data.stats.active_devices || 0;
+                document.getElementById('successCount').textContent = data.stats.successful_transfers || 0;
+                document.getElementById('blockedCount').textContent = data.stats.blocked_transfers || 0;
+            }
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    // Scan devices
+    async function scanDevices() {
+        const scanIcon = document.getElementById('scanIcon');
+        scanIcon.classList.add('animate-spin');
+
+        try {
+            const response = await fetch('/unified-monitoring/local/api/devices');
+            const data = await response.json();
+
+            if (data.success) {
+                devices = data.devices;
+                document.getElementById('connectedCount').textContent = devices.length;
+                renderDevices();
+            }
+        } catch (error) {
+            console.error('Error scanning devices:', error);
+        }
+
+        scanIcon.classList.remove('animate-spin');
+    }
+
+    // Render devices
+    function renderDevices() {
+        const container = document.getElementById('deviceList');
+
+        if (devices.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-dark-500">
+                    <i data-lucide="usb" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+                    <p>No USB devices detected</p>
+                </div>
+            `;
+        } else {
+            container.innerHTML = devices.map(device => `
+                <div class="bg-dark-800/50 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl ${device.registered ? 'bg-green-500/20' : 'bg-dark-700'} flex items-center justify-center">
+                            <i data-lucide="hard-drive" class="w-6 h-6 ${device.registered ? 'text-green-400' : 'text-dark-400'}"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-white">${device.name}</div>
+                            <div class="text-sm text-dark-400">${device.type} • ${device.drive_letter}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        ${device.registered
+                    ? `<span class="px-3 py-1 bg-green-500/10 text-green-400 text-xs rounded-full flex items-center gap-1">
+                                <i data-lucide="check" class="w-3 h-3"></i> Registered
+                               </span>
+                               ${(currentUser?.role === 'superadmin' || currentUser?.role === 'admin') ? `<button onclick="unregisterDevice('${device.hash}')" class="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs rounded-lg transition-colors">Unregister</button>` : ''}`
+                    : `<span class="px-3 py-1 bg-yellow-500/10 text-yellow-400 text-xs rounded-full">Not Registered</span>
+                                ${(currentUser?.role === 'superadmin' || currentUser?.role === 'admin') ? `<button onclick="registerDevice('${device.hash || device.device_hash}')" class="px-3 py-1 bg-local-600 hover:bg-local-700 text-white text-xs rounded-lg transition-colors">Register</button>` : ''}`
+                }
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        lucide.createIcons();
+    }
+
+    // Register device
+    async function registerDevice(hash) {
+        try {
+            const response = await fetch('/unified-monitoring/local/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hash })
+            });
+            const data = await response.json();
+            if (data.success) {
+                await scanDevices();
+                await loadStats();
+            } else {
+                alert(data.message || 'Failed to register device');
+            }
+        } catch (error) {
+            console.error('Error registering device:', error);
+        }
+    }
+
+    // Unregister device
+    async function unregisterDevice(hash) {
+        if (!confirm('Are you sure you want to unregister this device?')) return;
+
+        try {
+            const response = await fetch('/unified-monitoring/local/api/unregister', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hash })
+            });
+            const data = await response.json();
+            if (data.success) {
+                await scanDevices();
+                await loadStats();
+            } else {
+                alert(data.message || 'Failed to unregister device');
+            }
+        } catch (error) {
+            console.error('Error unregistering device:', error);
+        }
+    }
+
+    // Load drives
+    async function loadDrives() {
+        try {
+            const response = await fetch('/unified-monitoring/local/api/drives');
+            const data = await response.json();
+
+            if (data.success) {
+                drives = data.drives;
+                const select = document.getElementById('destinationDrive');
+                select.innerHTML = '<option value="">Select destination drive</option>' +
+                    drives.map(drive => `<option value="${drive}">${drive}</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading drives:', error);
+        }
+    }
+
+    // File input handling
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+        const fileName = e.target.files[0]?.name || 'No file selected';
+        document.getElementById('selectedFileName').textContent = fileName;
+    });
+
+    // Transfer file
+    async function transferFile() {
+        const fileInput = document.getElementById('fileInput');
+        const destination = document.getElementById('destinationDrive').value;
+        const statusDiv = document.getElementById('transferStatus');
+        const btn = document.getElementById('transferBtn');
+
+        if (!fileInput.files[0]) {
+            statusDiv.className = 'mt-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400';
+            statusDiv.textContent = 'Please select a file';
+            statusDiv.classList.remove('hidden');
+            return;
+        }
+
+        if (!destination) {
+            statusDiv.className = 'mt-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400';
+            statusDiv.textContent = 'Please select a destination drive';
+            statusDiv.classList.remove('hidden');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><span>Transferring...</span>';
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('destination', destination);
+
+        try {
+            const response = await fetch('/unified-monitoring/local/api/transfer', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                statusDiv.className = 'mt-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400';
+                statusDiv.textContent = `✓ File transferred successfully to ${data.destination}`;
+                await loadStats();
+            } else if (data.blocked) {
+                statusDiv.className = 'mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400';
+                statusDiv.textContent = `✗ Transfer blocked: ${data.error}`;
+            } else {
+                statusDiv.className = 'mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400';
+                statusDiv.textContent = `✗ Error: ${data.error}`;
+            }
+        } catch (error) {
+            statusDiv.className = 'mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400';
+            statusDiv.textContent = 'Connection error. Please try again.';
+        }
+
+        statusDiv.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i><span>Transfer File</span>';
+        lucide.createIcons();
+    }
+
+    // Load users
+    async function loadUsers() {
+        try {
+            const response = await fetch('/unified-monitoring/local/api/users');
+            const data = await response.json();
+
+            if (data.success) {
+                renderUsers(data.users);
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+            document.getElementById('userList').innerHTML = '<div class="text-center py-8 text-dark-500">Error loading users</div>';
+        }
+    }
+
+    // Render users
+    function renderUsers(users) {
+        const container = document.getElementById('userList');
+
+        if (users.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-dark-500">No users found</div>';
+        } else {
+            const roleColors = {
+                superadmin: 'bg-local-500/10 text-local-400',
+                admin: 'bg-primary-500/10 text-primary-400',
+                user: 'bg-dark-700 text-dark-300'
+            };
+
+            container.innerHTML = users.map(user => {
+                // Determine if user can be deleted (not current user, not superadmin)
+                const canDelete = currentUser &&
+                    (currentUser.role === 'superadmin' || currentUser.role === 'admin') &&
+                    user.id !== currentUser.id &&
+                    user.role !== 'superadmin';
+
+                // Only superadmin can reset passwords (for any user including themselves)
+                const canResetPassword = currentUser &&
+                    currentUser.role === 'superadmin' &&
+                    (user.role !== 'superadmin' || user.id === currentUser.id);
+
+                return `
+                <div class="bg-dark-800/50 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-local-500/20 flex items-center justify-center">
+                            <i data-lucide="user" class="w-5 h-5 text-local-400"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-white">${user.username}</div>
+                            <div class="text-sm text-dark-400">${user.mac_address || 'No MAC'}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="px-3 py-1 ${roleColors[user.role] || roleColors.user} text-xs rounded-full">${user.role}</span>
+                        ${user.is_active
+                        ? '<span class="w-2 h-2 bg-green-400 rounded-full"></span>'
+                        : '<span class="w-2 h-2 bg-red-400 rounded-full"></span>'}
+                        ${canResetPassword
+                        ? `<button onclick="showResetPasswordModal(${user.id}, '${user.username}')" 
+                                class="px-3 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 text-xs rounded-lg transition-colors flex items-center gap-1">
+                                <i data-lucide="key" class="w-3 h-3"></i> Reset
+                               </button>`
+                        : ''}
+                        ${canDelete
+                        ? `<button onclick="deleteUser(${user.id}, '${user.username}')" 
+                                class="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs rounded-lg transition-colors flex items-center gap-1">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i> Remove
+                               </button>`
+                        : ''}
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        lucide.createIcons();
+    }
+
+    // Load logs
+    async function loadLogs() {
+        try {
+            const response = await fetch('/unified-monitoring/local/api/logs');
+            const data = await response.json();
+
+            if (data.success) {
+                renderLogs(data.logs);
+            } else {
+                document.getElementById('logTableBody').innerHTML = 
+                    '<tr><td colspan="4" class="py-8 text-center text-dark-500">Could not load logs: ' + (data.error || 'Unknown error') + '</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading logs:', error);
+            document.getElementById('logTableBody').innerHTML = 
+                '<tr><td colspan="4" class="py-8 text-center text-red-400">Failed to load transfer logs</td></tr>';
+        }
+    }
+
+    // Render logs
+    function renderLogs(logs) {
+        const tbody = document.getElementById('logTableBody');
+
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-dark-500">No transfer logs</td></tr>';
+        } else {
+            const statusStyles = {
+                SUCCESS: 'bg-green-500/10 text-green-400',
+                BLOCKED: 'bg-red-500/10 text-red-400',
+                FAILED: 'bg-yellow-500/10 text-yellow-400'
+            };
+
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-dark-800/30">
+                    <td class="py-3 text-dark-400 text-sm">${formatLogTimestamp(log.timestamp)}</td>
+                    <td class="py-3 text-white">${log.source}</td>
+                    <td class="py-3 text-dark-400 text-sm">${log.destination}</td>
+                    <td class="py-3">
+                        <span class="px-2 py-1 text-xs rounded-full ${statusStyles[log.status] || ''}">${log.status}</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // Format timestamps for display
+    function formatLogTimestamp(ts) {
+        if (!ts) return '';
+        // Already formatted
+        if (/^\d{2} \w{3} \d{4},/.test(ts)) return ts;
+        try {
+            const d = new Date(ts);
+            if (isNaN(d.getTime())) return ts;
+            return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                 + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        } catch { return ts; }
+    }
+
+    // Show section
+    function showSection(section) {
+        // Block regular users from accessing admin-only sections
+        if (currentUser && currentUser.role === 'user' && (section === 'users' || section === 'logs')) {
+            section = 'transfer'; // Redirect to transfer section
+        }
+
+        const sections = ['devices', 'transfer', 'users', 'logs'];
+        sections.forEach(s => {
+            document.getElementById(s + 'Section').classList.toggle('hidden', s !== section);
+        });
+
+        // Update nav buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            const isActive = btn.dataset.section === section;
+            btn.classList.toggle('bg-local-500/10', isActive);
+            btn.classList.toggle('text-local-400', isActive);
+            btn.classList.toggle('font-medium', isActive);
+        });
+
+        // Load section data
+        if (section === 'devices') scanDevices();
+        if (section === 'users') loadUsers();
+        if (section === 'logs') loadLogs();
+        if (section === 'transfer') loadDrives();
+    }
+
+    // Add user modal
+    function showAddUserModal() {
+        document.getElementById('addUserModal').classList.remove('hidden');
+
+        // Hide Admin option if current user is not superadmin
+        const roleSelect = document.getElementById('newRole');
+        if (currentUser && currentUser.role !== 'superadmin') {
+            // Remove or hide the admin option
+            for (let i = 0; i < roleSelect.options.length; i++) {
+                if (roleSelect.options[i].value === 'admin') {
+                    roleSelect.options[i].style.display = 'none'; // Hide it
+                    roleSelect.options[i].disabled = true; // Disable it
+                }
+            }
+            roleSelect.value = 'user'; // Force select user
+        } else {
+            // Show all
+            for (let i = 0; i < roleSelect.options.length; i++) {
+                roleSelect.options[i].style.display = 'block';
+                roleSelect.options[i].disabled = false;
+            }
+        }
+    }
+
+    function hideAddUserModal() {
+        document.getElementById('addUserModal').classList.add('hidden');
+    }
+
+    // Add user form
+    document.getElementById('addUserForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const data = {
+            username: document.getElementById('newUsername').value,
+            password: document.getElementById('newPassword').value,
+            role: document.getElementById('newRole').value,
+            mac_address: document.getElementById('newMacAddress').value
+        };
+
+        try {
+            const response = await fetch('/unified-monitoring/local/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                hideAddUserModal();
+                loadUsers();
+                this.reset();
+            } else {
+                alert(result.message || 'Failed to add user');
+            }
+        } catch (error) {
+            console.error('Error adding user:', error);
+        }
+    });
+
+    // Delete user
+    async function deleteUser(userId, username) {
+        if (!confirm(`Are you sure you want to remove user "${username}"?`)) return;
+
+        try {
+            const response = await fetch(`/unified-monitoring/local/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                loadUsers();
+            } else {
+                alert(data.message || 'Failed to remove user');
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            alert('Error removing user. Please try again.');
+        }
+    }
+
+    // Reset Password Modal functions
+    function showResetPasswordModal(userId, username) {
+        document.getElementById('resetUserId').value = userId;
+        document.getElementById('resetUserName').textContent = username;
+        document.getElementById('newResetPassword').value = '';
+        document.getElementById('confirmResetPassword').value = '';
+        document.getElementById('resetPasswordError').classList.add('hidden');
+        document.getElementById('resetPasswordModal').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function hideResetPasswordModal() {
+        document.getElementById('resetPasswordModal').classList.add('hidden');
+    }
+
+    // Reset Password Form
+    document.getElementById('resetPasswordForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const userId = document.getElementById('resetUserId').value;
+        const newPassword = document.getElementById('newResetPassword').value;
+        const confirmPassword = document.getElementById('confirmResetPassword').value;
+        const errorDiv = document.getElementById('resetPasswordError');
+
+        // Validation
+        if (newPassword.length < 6) {
+            errorDiv.textContent = 'Password must be at least 6 characters';
+            errorDiv.classList.remove('hidden');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            errorDiv.textContent = 'Passwords do not match';
+            errorDiv.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/unified-monitoring/local/api/users/${userId}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_password: newPassword })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                hideResetPasswordModal();
+                alert(data.message || 'Password reset successfully');
+            } else {
+                errorDiv.textContent = data.message || 'Failed to reset password';
+                errorDiv.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error resetting password:', error);
+            errorDiv.textContent = 'Error resetting password. Please try again.';
+            errorDiv.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

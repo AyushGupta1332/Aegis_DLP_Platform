@@ -1,0 +1,41 @@
+# ---- Credentials & Secrets (NEVER commit these) ----
+credentials.json
+token.json
+.env
+*.pem
+*.key
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ---- Databases ----
+databases/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---- Uploads & Temp Files ----
+uploads/
+temp_uploads/
+*.tmp
+*.temp
+
+# ---- Model Weights ----
+models/
+
+# ---- IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- OS Files ----
+Thumbs.db
+Desktop.ini
+.DS_Store

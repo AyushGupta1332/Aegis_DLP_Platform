@@ -35,10 +35,12 @@
 
         .event-row {
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .event-row:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(4px);
         }
 
         .event-created {
@@ -57,6 +59,10 @@
             border-left: 3px solid #8b5cf6;
         }
 
+        .event-accessed {
+            border-left: 3px solid #f97316;
+        }
+
         .severity-info {
             color: #60a5fa;
         }
@@ -71,15 +77,8 @@
         }
 
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .scroll-container {
@@ -121,6 +120,62 @@
             background: rgba(245, 158, 11, 0.2);
             border: 1px solid rgba(245, 158, 11, 0.4);
         }
+
+        /* Modal styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e1e2e;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .detail-label {
+            width: 140px;
+            font-weight: 600;
+            color: #9ca3af;
+        }
+
+        .detail-value {
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        }
     </style>
 </head>
 
@@ -132,8 +187,7 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <a href="/" class="flex items-center space-x-3">
-                        <div
-                            class="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
+                        <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
                             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -142,13 +196,10 @@
                                 </path>
                             </svg>
                         </div>
-                        <span
-                            class="text-xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">File
-                            Monitor</span>
+                        <span class="text-xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">File Monitor</span>
                     </a>
                 </div>
-                <a href="/"
-                    class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition duration-300 text-sm">
+                <a href="/" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition duration-300 text-sm">
                     ← Back to Dashboard
                 </a>
             </div>
@@ -161,7 +212,7 @@
         <!-- Header -->
         <div class="mb-8">
             <h1 class="text-4xl font-bold mb-2">Real-Time File Monitoring</h1>
-            <p class="text-gray-400">Monitor directories for file changes with threat detection</p>
+            <p class="text-gray-400">Monitor directories for file changes with threat detection and access tracking</p>
         </div>
 
         <!-- Control Panel -->
@@ -228,7 +279,7 @@
         </div>
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-7 gap-4 mb-8">
             <div class="card-glass rounded-xl p-4 text-center">
                 <div class="text-3xl font-bold text-white" id="statTotal">0</div>
                 <div class="text-sm text-gray-400">Total Events</div>
@@ -244,6 +295,10 @@
             <div class="card-glass rounded-xl p-4 text-center">
                 <div class="text-3xl font-bold text-red-400" id="statDeleted">0</div>
                 <div class="text-sm text-gray-400">Deleted</div>
+            </div>
+            <div class="card-glass rounded-xl p-4 text-center">
+                <div class="text-3xl font-bold text-orange-400" id="statAccessed">0</div>
+                <div class="text-sm text-gray-400">Accessed</div>
             </div>
             <div class="card-glass rounded-xl p-4 text-center">
                 <div class="text-3xl font-bold text-yellow-400" id="statWarnings">0</div>
@@ -262,7 +317,7 @@
 
         <!-- Event Log -->
         <div class="card-glass rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
                 <h3 class="text-lg font-semibold flex items-center">
                     <svg class="w-5 h-5 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -272,21 +327,67 @@
                     Event Log
                 </h3>
 
-                <!-- Filter Buttons -->
+                <!-- Export Buttons -->
                 <div class="flex gap-2">
-                    <button onclick="filterEvents('all')"
-                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
-                        data-filter="all">All</button>
-                    <button onclick="filterEvents('created')"
-                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
-                        data-filter="created">Created</button>
-                    <button onclick="filterEvents('modified')"
-                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
-                        data-filter="modified">Modified</button>
-                    <button onclick="filterEvents('deleted')"
-                        class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
-                        data-filter="deleted">Deleted</button>
+                    <button onclick="exportEvents('csv')"
+                        class="px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        CSV
+                    </button>
+                    <button onclick="exportEvents('json')"
+                        class="px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        JSON
+                    </button>
                 </div>
+            </div>
+
+            <!-- Search and Filters -->
+            <div class="grid md:grid-cols-4 gap-4 mb-4">
+                <!-- Search Input -->
+                <div class="md:col-span-2">
+                    <input type="text" id="searchInput" placeholder="Search by filename or path..."
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+                        oninput="debounceSearch()">
+                </div>
+                
+                <!-- Date Range -->
+                <div>
+                    <input type="date" id="startDate"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
+                        onchange="applyFilters()">
+                </div>
+                <div>
+                    <input type="date" id="endDate"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500"
+                        onchange="applyFilters()">
+                </div>
+            </div>
+
+            <!-- Filter Buttons -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button onclick="filterEvents('all')"
+                    class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition active"
+                    data-filter="all">All</button>
+                <button onclick="filterEvents('created')"
+                    class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                    data-filter="created">Created</button>
+                <button onclick="filterEvents('modified')"
+                    class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                    data-filter="modified">Modified</button>
+                <button onclick="filterEvents('deleted')"
+                    class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                    data-filter="deleted">Deleted</button>
+                <button onclick="filterEvents('accessed')"
+                    class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                    data-filter="accessed">Accessed</button>
+                <button onclick="filterEvents('moved')"
+                    class="filter-btn px-3 py-1 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition"
+                    data-filter="moved">Moved</button>
             </div>
 
             <div id="eventLog" class="scroll-container">
@@ -308,6 +409,23 @@
 
     </main>
 
+    <!-- Event Details Modal -->
+    <div id="eventModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold">Event Details</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="modalContent">
+                <!-- Event details will be populated here -->
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div id="toastContainer" class="fixed bottom-6 right-6 space-y-3 z-50">
         <!-- Toasts will appear here -->
@@ -324,6 +442,7 @@
         let watchedDirectories = [];
         let events = [];
         let currentFilter = 'all';
+        let searchTimeout = null;
 
         // Socket.IO event handlers
         socket.on('connect', () => {
@@ -365,10 +484,19 @@
             }
         }
 
-        // Load events
+        // Load events with filters
         async function loadEvents() {
             try {
-                const response = await fetch('/api/file-monitor/events?limit=100');
+                const search = document.getElementById('searchInput').value.trim();
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                let url = `/api/file-monitor/events/search?limit=100&event_type=${currentFilter}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                if (startDate) url += `&start_date=${startDate}`;
+                if (endDate) url += `&end_date=${endDate}`;
+                
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -378,6 +506,19 @@
             } catch (error) {
                 console.error('Error loading events:', error);
             }
+        }
+
+        // Debounced search
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadEvents();
+            }, 300);
+        }
+
+        // Apply filters
+        function applyFilters() {
+            loadEvents();
         }
 
         // Load stats
@@ -484,6 +625,7 @@
                     isMonitoring = true;
                     updateUIState();
                     showToast('Monitoring started', 'success');
+                    loadStats();
                 } else {
                     showToast(data.message, 'error');
                 }
@@ -558,11 +700,7 @@
             const emptyState = document.getElementById('emptyState');
             const eventsList = document.getElementById('eventsList');
 
-            const filteredEvents = currentFilter === 'all'
-                ? events
-                : events.filter(e => e.event_type === currentFilter);
-
-            if (filteredEvents.length === 0) {
+            if (events.length === 0) {
                 emptyState.classList.remove('hidden');
                 eventsList.classList.add('hidden');
                 return;
@@ -571,8 +709,8 @@
             emptyState.classList.add('hidden');
             eventsList.classList.remove('hidden');
 
-            eventsList.innerHTML = filteredEvents.map(event => `
-                <div class="event-row event-${event.event_type} rounded-lg p-3 bg-gray-800/50">
+            eventsList.innerHTML = events.map(event => `
+                <div class="event-row event-${event.event_type} rounded-lg p-3 bg-gray-800/50" onclick="showEventDetails('${event.id}')">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             ${getEventIcon(event.event_type)}
@@ -580,6 +718,7 @@
                                 <div class="font-medium flex items-center gap-2">
                                     <span>${event.filename}</span>
                                     ${event.severity !== 'info' ? `<span class="severity-${event.severity} text-xs uppercase font-bold">${event.severity}</span>` : ''}
+                                    ${event.file_size_display ? `<span class="text-xs text-gray-500">${event.file_size_display}</span>` : ''}
                                 </div>
                                 <div class="text-sm text-gray-500 truncate max-w-md">${event.directory}</div>
                             </div>
@@ -587,6 +726,7 @@
                         <div class="text-right">
                             <div class="text-sm text-gray-400">${event.timestamp_display}</div>
                             <div class="text-xs text-gray-500 capitalize">${event.event_type}</div>
+                            ${event.process_name ? `<div class="text-xs text-gray-600">${event.process_name}</div>` : ''}
                         </div>
                     </div>
                 </div>
@@ -599,7 +739,8 @@
                 created: '<svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>',
                 modified: '<svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>',
                 deleted: '<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>',
-                moved: '<svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>'
+                moved: '<svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>',
+                accessed: '<svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>'
             };
             return icons[type] || icons.modified;
         }
@@ -608,12 +749,105 @@
         function filterEvents(filter) {
             currentFilter = filter;
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-amber-600');
-                btn.classList.add('bg-gray-700');
+                btn.classList.remove('active');
             });
-            document.querySelector(`[data-filter="${filter}"]`).classList.remove('bg-gray-700');
-            document.querySelector(`[data-filter="${filter}"]`).classList.add('bg-amber-600');
-            renderEvents();
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+            loadEvents();
+        }
+
+        // Show event details modal
+        async function showEventDetails(eventId) {
+            try {
+                const response = await fetch(`/api/file-monitor/event/${eventId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const event = data.event;
+                    const modal = document.getElementById('eventModal');
+                    const content = document.getElementById('modalContent');
+                    
+                    content.innerHTML = `
+                        <div class="space-y-1">
+                            <div class="detail-row">
+                                <span class="detail-label">Event Type</span>
+                                <span class="detail-value capitalize font-semibold ${getTypeColor(event.event_type)}">${event.event_type}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Filename</span>
+                                <span class="detail-value">${event.filename}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Full Path</span>
+                                <span class="detail-value text-sm">${event.path}</span>
+                            </div>
+                            ${event.old_path ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Previous Path</span>
+                                <span class="detail-value text-sm">${event.old_path}</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">Timestamp</span>
+                                <span class="detail-value">${event.date_display} ${event.timestamp_display}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Severity</span>
+                                <span class="detail-value severity-${event.severity} uppercase font-bold">${event.severity}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">File Size</span>
+                                <span class="detail-value">${event.file_size_display || 'N/A'}</span>
+                            </div>
+                            ${event.file_hash ? `
+                            <div class="detail-row">
+                                <span class="detail-label">SHA-256 Hash</span>
+                                <span class="detail-value text-xs font-mono break-all">${event.file_hash}</span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">Process</span>
+                                <span class="detail-value">${event.process_name || 'Unknown'} ${event.process_id ? `(PID: ${event.process_id})` : ''}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Extension</span>
+                                <span class="detail-value">${event.extension || 'None'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Event ID</span>
+                                <span class="detail-value font-mono text-sm">${event.id}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    modal.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Error loading event details:', error);
+                showToast('Failed to load event details', 'error');
+            }
+        }
+
+        function getTypeColor(type) {
+            const colors = {
+                created: 'text-green-400',
+                modified: 'text-blue-400',
+                deleted: 'text-red-400',
+                moved: 'text-purple-400',
+                accessed: 'text-orange-400'
+            };
+            return colors[type] || 'text-gray-400';
+        }
+
+        // Close modal
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('eventModal').classList.remove('active');
+        }
+
+        // Export events
+        function exportEvents(format) {
+            window.location.href = `/api/file-monitor/events/export?format=${format}&limit=1000`;
+            showToast(`Exporting events as ${format.toUpperCase()}...`, 'info');
         }
 
         // Update stats
@@ -627,6 +861,7 @@
             document.getElementById('statCreated').textContent = stats.created || 0;
             document.getElementById('statModified').textContent = stats.modified || 0;
             document.getElementById('statDeleted').textContent = stats.deleted || 0;
+            document.getElementById('statAccessed').textContent = stats.accessed || 0;
             document.getElementById('statWarnings').textContent = stats.warnings || 0;
             document.getElementById('statCritical').textContent = stats.critical || 0;
         }
@@ -687,9 +922,15 @@
             if (e.key === 'Enter') addDirectory();
         });
 
+        // ESC key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
         // Initialize filter button
         filterEvents('all');
     </script>
+
 
 </body>
 

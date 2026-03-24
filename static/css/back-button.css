@@ -1,0 +1,146 @@
+/**
+ * Aegis DLP - Floating Back Button Styles
+ */
+
+/* Floating Back Button Container */
+.aegis-back-button {
+    position: fixed;
+    top: 1.5rem;
+    left: 1.5rem;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(30, 30, 46, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    color: #e5e7eb;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.aegis-back-button:hover {
+    background: rgba(45, 45, 70, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateX(-4px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+}
+
+.aegis-back-button:active {
+    transform: translateX(-2px) scale(0.98);
+}
+
+/* Back Arrow Icon */
+.aegis-back-button svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    transition: transform 0.2s ease;
+}
+
+.aegis-back-button:hover svg {
+    transform: translateX(-3px);
+}
+
+/* Label */
+.aegis-back-button span {
+    opacity: 0.9;
+}
+
+.aegis-back-button:hover span {
+    opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .aegis-back-button {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.8125rem;
+        top: 1rem;
+        left: 1rem;
+    }
+    
+    .aegis-back-button svg {
+        width: 1rem;
+        height: 1rem;
+    }
+}
+
+/* When there's a fixed nav at top, adjust position */
+@media (min-width: 641px) {
+    .aegis-back-button.below-nav {
+        top: 5rem;
+    }
+}
+
+/* Compact mode - icon only */
+.aegis-back-button.compact {
+    padding: 0.75rem;
+    border-radius: 0.625rem;
+}
+
+.aegis-back-button.compact span {
+    display: none;
+}
+
+/* Theme variants */
+.aegis-back-button.accent-teal {
+    border-color: rgba(20, 184, 166, 0.3);
+}
+
+.aegis-back-button.accent-teal:hover {
+    border-color: rgba(20, 184, 166, 0.6);
+    box-shadow: 0 6px 25px rgba(20, 184, 166, 0.2);
+}
+
+.aegis-back-button.accent-orange {
+    border-color: rgba(249, 115, 22, 0.3);
+}
+
+.aegis-back-button.accent-orange:hover {
+    border-color: rgba(249, 115, 22, 0.6);
+    box-shadow: 0 6px 25px rgba(249, 115, 22, 0.2);
+}
+
+.aegis-back-button.accent-blue {
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.aegis-back-button.accent-blue:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 6px 25px rgba(99, 102, 241, 0.2);
+}
+
+.aegis-back-button.accent-amber {
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.aegis-back-button.accent-amber:hover {
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 6px 25px rgba(245, 158, 11, 0.2);
+}
+
+.aegis-back-button.accent-red {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.aegis-back-button.accent-red:hover {
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 6px 25px rgba(239, 68, 68, 0.2);
+}
+
+.aegis-back-button.accent-green {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.aegis-back-button.accent-green:hover {
+    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.2);
+}

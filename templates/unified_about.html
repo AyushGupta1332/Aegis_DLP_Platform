@@ -1,0 +1,160 @@
+{% extends "unified_base.html" %}
+
+{% block title %}About - Unified File Monitoring{% endblock %}
+
+{% block body %}
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+            <a href="/" class="flex items-center space-x-3">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 via-cloud-500 to-local-500 flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+                </div>
+                <span class="text-xl font-bold gradient-text">FileGuard</span>
+            </a>
+            <div class="flex items-center space-x-4">
+                <a href="/unified-monitoring"
+                    class="text-dark-300 hover:text-white transition-colors px-4 py-2">Home</a>
+                <a href="/unified-monitoring#systems"
+                    class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-all">
+                    Get Started
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="pt-24 pb-16 px-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-16 animate-slide-up">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">About FileGuard</h1>
+            <p class="text-dark-400 text-lg">Unified File Monitoring System</p>
+        </div>
+
+        <div class="space-y-8 animate-fade-in">
+            <!-- Overview -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i data-lucide="info" class="w-6 h-6 text-primary-400"></i>
+                    Overview
+                </h2>
+                <p class="text-dark-300 leading-relaxed">
+                    FileGuard is a comprehensive file monitoring and control system that combines cloud-based
+                    file sharing with local USB device management. It provides enterprise-grade security
+                    features including role-based access control, device registration, and complete audit trails.
+                </p>
+            </div>
+
+            <!-- Cloud System -->
+            <div class="glass rounded-2xl p-8 border border-cloud-500/20">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i data-lucide="cloud" class="w-6 h-6 text-cloud-400"></i>
+                    Cloud Monitoring System
+                </h2>
+                <ul class="space-y-3 text-dark-300">
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-cloud-500 mt-0.5"></i>
+                        <span><strong class="text-white">Google Drive Integration</strong> - Upload and manage files on
+                            Google Drive</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-cloud-500 mt-0.5"></i>
+                        <span><strong class="text-white">OAuth 2.0 Authentication</strong> - Secure login with Google
+                            accounts</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-cloud-500 mt-0.5"></i>
+                        <span><strong class="text-white">Permission Management</strong> - Assign specific files to
+                            specific users</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-cloud-500 mt-0.5"></i>
+                        <span><strong class="text-white">IP-Based Access Control</strong> - Optional IP address
+                            verification</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Local System -->
+            <div class="glass rounded-2xl p-8 border border-local-500/20">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i data-lucide="hard-drive" class="w-6 h-6 text-local-400"></i>
+                    Local Monitoring System
+                </h2>
+                <ul class="space-y-3 text-dark-300">
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-local-500 mt-0.5"></i>
+                        <span><strong class="text-white">USB Device Detection</strong> - Real-time monitoring of
+                            connected devices</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-local-500 mt-0.5"></i>
+                        <span><strong class="text-white">Device Registration</strong> - Only registered devices can
+                            receive files</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-local-500 mt-0.5"></i>
+                        <span><strong class="text-white">MAC + Password Auth</strong> - Hardware-level authentication
+                            security</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <i data-lucide="check" class="w-5 h-5 text-local-500 mt-0.5"></i>
+                        <span><strong class="text-white">Role-Based Access</strong> - SuperAdmin, Admin, and User
+                            roles</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- User Roles -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i data-lucide="users" class="w-6 h-6 text-primary-400"></i>
+                    User Roles (Local System)
+                </h2>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="bg-dark-800/50 rounded-xl p-4">
+                        <h3 class="text-lg font-semibold text-primary-400 mb-2">SuperAdmin</h3>
+                        <p class="text-dark-400 text-sm">Register devices, manage all users, full system access</p>
+                    </div>
+                    <div class="bg-dark-800/50 rounded-xl p-4">
+                        <h3 class="text-lg font-semibold text-cloud-400 mb-2">Admin</h3>
+                        <p class="text-dark-400 text-sm">Grant device permissions to users, view logs</p>
+                    </div>
+                    <div class="bg-dark-800/50 rounded-xl p-4">
+                        <h3 class="text-lg font-semibold text-local-400 mb-2">User</h3>
+                        <p class="text-dark-400 text-sm">Transfer files only to authorized devices</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tech Stack -->
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i data-lucide="code" class="w-6 h-6 text-primary-400"></i>
+                    Technology Stack
+                </h2>
+                <div class="flex flex-wrap gap-3">
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">Python</span>
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">Flask</span>
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">Flask-SocketIO</span>
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">SQLite</span>
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">Google OAuth 2.0</span>
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">Google Drive API</span>
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">WMI (Windows)</span>
+                    <span class="px-4 py-2 bg-dark-800/50 rounded-lg text-sm text-dark-300">Tailwind CSS</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-12">
+            <a href="/unified-monitoring"
+                class="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-all">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                Back to Home
+            </a>
+        </div>
+    </div>
+</main>
+{% endblock %}
