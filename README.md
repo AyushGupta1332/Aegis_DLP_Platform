@@ -7,7 +7,7 @@ Detailed implementation blueprints, architecture internals, route-level referenc
 
 - Core implementation is proprietary and intended for authorized contributors only.
 - Do **not** redistribute internal source modules or design documents outside approved channels.
-- To reduce accidental redistribution via release archives, sensitive directories are excluded using `.gitattributes` `export-ignore` rules.
+- To reduce accidental redistribution via release archives, sensitive directories are excluded using `.gitattributes` with `export-ignore` rules.
 - For strong protection, keep this repository **private** and restrict collaborator access.
 
 ## Authorized Local Run (Internal Use)
