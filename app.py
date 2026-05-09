@@ -1,9 +1,8 @@
 """
-Aegis DLP - Main Application Entry Point
-==========================================
-All module routes are handled by Flask Blueprints (see blueprints/).
-This file contains only: Flask/SocketIO setup, blueprint registration,
-Event Bus initialization, shared state injection, and the startup banner.
+Aegis DLP - Main Application Entry Point (Redacted)
+====================================================
+Internal blueprint routing and module implementations are intentionally
+redacted from this public repository.
 """
 # ---- Suppress noisy warnings & logs (must be before library imports) ----
 import warnings
@@ -92,19 +91,7 @@ for bp in ALL_BLUEPRINTS:
 
 
 # ---- Page Visit Auto-Tracking ----
-PAGE_MODULE_MAP = {
-    '/': 'Home Dashboard',
-    '/anomaly-detection': 'Network Anomaly Detection',
-    '/data-classification': 'Data Classification',
-    '/device-monitoring': 'Device Monitoring',
-    '/phishing-detection': 'Phishing Detection',
-    '/file-monitoring': 'File Monitoring',
-    '/file-encryption': 'File Encryption',
-    '/malware-scanner': 'Malware Scanner',
-    '/event-bus': 'Event Bus Dashboard',
-    '/unified-monitoring/local': 'Unified Local Monitoring',
-    '/unified-monitoring/local/dashboard': 'UBA Dashboard',
-}
+PAGE_MODULE_MAP = {}
 
 @app.before_request
 def track_page_visits():
@@ -217,38 +204,10 @@ if __name__ == '__main__':
     
     print("Server starting on http://localhost:5000")
     print()
-    print("Integrated Systems:")
-    print("  1. Anomaly Detection (MLP Model)")
-    print("  2. Data Classification (RoBERTa Model)")
-    print("  3. Phishing Detection (RoBERTa + YARA)")
-    print("  4. File Encryption (AES-256-GCM)")
-    print("  5. File Monitoring (Watchdog)")
-    print("  6. AI Security Assistant (Groq + ChromaDB)")
-    print("  7. Malware Scanner (VirusTotal API)")
-    print("  8. Unified Device Monitoring & File Transfer Control")
-    if EVENT_BUS_AVAILABLE:
-        print("  9. Event Bus & Correlation Engine (Module Interlinking)")
-    print()
-    print("Blueprint Modules: 9 registered")
+    print("Integrated Systems: Redacted in public build")
     print()
 
-    # Pre-load models
-    print("Pre-loading Data Classification Model...")
-    try:
-        from modules.data_classifier import get_classifier
-        get_classifier()
-        print("✓ Data Classification Model loaded!")
-    except Exception as e:
-        print(f"⚠ Could not pre-load classifier: {e}")
-
-    try:
-        from modules.body_classifier import predict_body_label
-        print("Pre-loading Phishing Detection Model...")
-        predict_body_label("Test email content")
-        print("✓ Phishing Detection Model loaded!")
-    except Exception as e:
-        print(f"⚠ Phishing Detection not available: {e}") 
-
+    print("Redacted modules are not pre-loaded in this build.")
     print()
     print("=" * 60)
 
