@@ -1,0 +1,6 @@
+# Exclude internal implementation from GitHub-generated source archives
+blueprints/** export-ignore
+modules/** export-ignore
+agentic/** export-ignore
+unified_monitoring_src/** export-ignore
+EVENT_BUS_CORRELATION_ENGINE.pdf export-ignore
