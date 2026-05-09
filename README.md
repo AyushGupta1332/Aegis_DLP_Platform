@@ -26,3 +26,6 @@ Detailed implementation blueprints, architecture internals, route-level referenc
 ## Support
 
 If you need full architecture and module-level documentation, request access through the project owner.
+
+** Contact ** <br>
+ayushranjan8901@gmail.com
