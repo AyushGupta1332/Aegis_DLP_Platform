@@ -1,16 +1,35 @@
-# Unified File Monitoring System - Source Modules
-# Package initialization
+"""
+Unified Monitoring (Redacted)
+=============================
+Device monitoring internals are intentionally removed.
+"""
 
-__version__ = "2.2.0"
-__author__ = "Unified Monitoring System"
+from .alerts import AlertManager, create_alert_manager
+from .device_identifier import DeviceIdentifier, USBDevice
+from .device_registry import DeviceRegistry, RegisteredDevice, TransferLog
+from .file_controller import FileTransferController, TransferResult, TransferStatus
+from .file_policy import FilePolicyChecker, PolicyMode, create_file_policy_checker
+from .usb_monitor import USBMonitor, USBMonitorWithRegistry, USBEvent, USBEventType
+from .user_manager import User, UserManager
 
-# Core USB modules
-# - device_identifier: USB device identification
-# - device_registry: Device registration and management
-# - file_controller: File transfer control
-# - usb_monitor: Real-time USB monitoring
-# - user_manager: User authentication and permissions
-
-# Security modules
-# - alerts: Email alert notifications
-# - file_policy: File type restrictions
+__all__ = [
+    'AlertManager',
+    'create_alert_manager',
+    'DeviceIdentifier',
+    'USBDevice',
+    'DeviceRegistry',
+    'RegisteredDevice',
+    'TransferLog',
+    'FileTransferController',
+    'TransferResult',
+    'TransferStatus',
+    'FilePolicyChecker',
+    'PolicyMode',
+    'create_file_policy_checker',
+    'USBMonitor',
+    'USBMonitorWithRegistry',
+    'USBEvent',
+    'USBEventType',
+    'User',
+    'UserManager',
+]

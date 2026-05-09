@@ -1,5 +1,8 @@
-# Agentic AI Module for Aegis DLP
-# Provides AI-powered security assistant with ChromaDB memory
+"""
+Agentic AI Module (Redacted)
+============================
+AI assistant internals are intentionally removed.
+"""
 
 from .agent import SecurityAgent, get_agent
 

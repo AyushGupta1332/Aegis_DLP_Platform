@@ -1,21 +1,7 @@
 """
-Aegis DLP - Flask Blueprints
-=============================
-Modular route organization for the Aegis DLP platform.
-Each blueprint handles a specific security module's routes and helpers.
-
-Phase 1 (Migrated):
-  - event_bus_bp     — Event Bus dashboard & API (8 routes)
-  - file_monitor_bp  — File Monitoring (12 routes)
-  - chatbot_bp       — AI Chatbot & Activity Tracking (6 routes)
-  - malware_bp       — Malware Scanner / VirusTotal (5 routes)
-
-Phase 2 (Migrated):
-  - network_ids_bp         — Network IDS / Anomaly Detection (5 routes)
-  - classification_bp      — Data Classification (4 routes)
-  - encryption_bp          — File Encryption / CryptoVault (9 routes)
-  - phishing_bp            — Phishing Detection (18 routes)
-  - unified_monitoring_bp  — Unified Device Monitoring (32 routes)
+Aegis DLP - Flask Blueprints (Redacted)
+========================================
+Internal route implementations are removed from this public repository.
 """
 
 from .event_bus_bp import event_bus_bp
@@ -28,7 +14,6 @@ from .encryption import encryption_bp
 from .phishing import phishing_bp
 from .unified_monitoring import unified_monitoring_bp
 
-# All fully migrated blueprints ready for registration
 ALL_BLUEPRINTS = [
     event_bus_bp,
     file_monitor_bp,
