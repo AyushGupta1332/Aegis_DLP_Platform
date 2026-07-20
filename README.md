@@ -1,6 +1,6 @@
 # 🛡️ Aegis DLP Platform (Restricted Overview)
 
-## For more info check my published Reserach Paper on SSRN and Research <br>
+## For more info check my published Research Paper on SSRN and Research Gate <br>
 
 **Visit My Portfolio** : [Visit](https://ayushguptas.dev)
 
