@@ -1,5 +1,9 @@
 # 🛡️ Aegis DLP Platform (Restricted Overview)
 
+## For more info check my published Reserach Paper on SSRN and Research <br>
+
+**Visit My Portfolio** : [Visit](https://ayushguptas.dev)
+
 This repository contains an internal Data Loss Prevention and cybersecurity platform.
 Detailed implementation blueprints, architecture internals, route-level references, and module design documentation have been intentionally removed from this public-facing README.
 
